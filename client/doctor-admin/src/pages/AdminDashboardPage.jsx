@@ -40,9 +40,16 @@ function AdminDashboardPage() {
 
   const [hospitalForm, setHospitalForm] = useState(hospitalInitial);
   const [doctorForm, setDoctorForm] = useState(doctorInitial);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [statusMessage, setStatusMessage] = useState('');
   const [error, setError] = useState('');
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+
+  const includesSearch = (...values) => {
+    if (!normalizedSearchQuery) return true;
+    return values.some((value) => String(value ?? '').toLowerCase().includes(normalizedSearchQuery));
+  };
 
   const loadDashboardData = async () => {
     if (!token) return;
@@ -96,6 +103,57 @@ function AdminDashboardPage() {
 
     return { doctorCountByHospital, patientCountByHospital };
   }, [allDoctors, appointments]);
+
+  const filteredHospitals = useMemo(
+    () => hospitals.filter((hospital) => includesSearch(
+      hospital.name,
+      hospital.email,
+      hospital.phone,
+      hospital.licenseNumber,
+      hospital.website,
+      hospital.description,
+      hospital.status,
+    )),
+    [hospitals, normalizedSearchQuery],
+  );
+
+  const filteredDoctors = useMemo(
+    () => allDoctors.filter((doctor) => includesSearch(
+      doctor.name,
+      doctor.email,
+      doctor.specialization,
+      doctor.contactNumber,
+      doctor.licenseNumber,
+      doctor.approvalStatus,
+      doctor.isApproved ? 'approved' : 'not approved',
+      doctor.hospitalId?.name,
+      doctor.hospitalId?.email,
+    )),
+    [allDoctors, normalizedSearchQuery],
+  );
+
+  const filteredPatients = useMemo(
+    () => patients.filter((patient) => includesSearch(
+      patient.name,
+      patient.email,
+      patient.contactNumber,
+      patient.address,
+    )),
+    [patients, normalizedSearchQuery],
+  );
+
+  const filteredAppointments = useMemo(
+    () => appointments.filter((appointment) => includesSearch(
+      appointment.patientId?.name,
+      appointment.patientId?.email,
+      appointment.doctorId?.name,
+      appointment.doctorId?.specialization,
+      appointment.doctorId?.hospitalId?.name,
+      appointment.status,
+      new Date(appointment.appointmentDate).toLocaleDateString(),
+    )),
+    [appointments, normalizedSearchQuery],
+  );
 
   const setSuccess = (message) => {
     setStatusMessage(message);
@@ -294,25 +352,35 @@ function AdminDashboardPage() {
           ))}
         </div>
 
+        <div className="rounded-xl border border-white/10 bg-white/5 p-3 sm:p-4">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search hospitals, doctors, patients, appointments..."
+            className="w-full rounded-lg border border-white/15 bg-[#101a30] px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-400"
+          />
+        </div>
+
         {activeTab === 'overview' && (
           <div className="space-y-6">
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <MetricCard label="Total Hospitals" value={hospitals.length} accent="blue" />
-              <MetricCard label="Pending Hospitals" value={hospitals.filter((item) => item.status === 'pending').length} accent="amber" />
-              <MetricCard label="Total Doctors" value={allDoctors.length} accent="purple" />
-              <MetricCard label="Pending Doctors" value={pendingDoctors.length} accent="amber" />
+              <MetricCard label="Total Hospitals" value={filteredHospitals.length} accent="blue" />
+              <MetricCard label="Pending Hospitals" value={filteredHospitals.filter((item) => item.status === 'pending').length} accent="amber" />
+              <MetricCard label="Total Doctors" value={filteredDoctors.length} accent="purple" />
+              <MetricCard label="Pending Doctors" value={filteredDoctors.filter((item) => !item.isApproved && item.approvalStatus === 'pending').length} accent="amber" />
             </div>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <MetricCard label="Total Patients" value={patients.length} accent="indigo" />
-              <MetricCard label="Appointments" value={appointments.length} accent="rose" />
-              <MetricCard label="Completed" value={appointments.filter((item) => item.status === 'completed').length} accent="emerald" />
-              <MetricCard label="Cancelled" value={appointments.filter((item) => item.status === 'cancelled').length} accent="rose" />
+              <MetricCard label="Total Patients" value={filteredPatients.length} accent="indigo" />
+              <MetricCard label="Appointments" value={filteredAppointments.length} accent="rose" />
+              <MetricCard label="Completed" value={filteredAppointments.filter((item) => item.status === 'completed').length} accent="emerald" />
+              <MetricCard label="Cancelled" value={filteredAppointments.filter((item) => item.status === 'cancelled').length} accent="rose" />
             </div>
           </div>
         )}
 
         {activeTab === 'hospitals' && (
-          <div className="grid gap-5 lg:gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+          <div className="space-y-5 lg:space-y-6">
             <form onSubmit={createHospital} className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
               <h3 className="text-lg font-black">Create Hospital</h3>
               <div className="mt-4 grid gap-3">
@@ -333,7 +401,7 @@ function AdminDashboardPage() {
             </form>
 
             <div className="space-y-3 lg:hidden">
-              {hospitals.map((hospital) => (
+              {filteredHospitals.map((hospital) => (
                 <article key={hospital._id} className="rounded-xl border border-white/10 bg-white/5 p-4">
                   <p className="text-base font-bold text-slate-100">{hospital.name}</p>
                   <p className="text-sm text-slate-400">{hospital.email}</p>
@@ -367,7 +435,7 @@ function AdminDashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10">
-                  {hospitals.map((hospital) => (
+                  {filteredHospitals.map((hospital) => (
                     <tr key={hospital._id} className="hover:bg-white/5">
                       <td className="px-4 py-3">
                         <p className="font-bold text-slate-100">{hospital.name}</p>
@@ -496,7 +564,7 @@ function AdminDashboardPage() {
             </form>
 
             <div className="space-y-3 lg:hidden">
-              {allDoctors.map((doctor) => (
+              {filteredDoctors.map((doctor) => (
                 <article key={doctor._id} className="rounded-xl border border-white/10 bg-white/5 p-4">
                   <p className="text-base font-bold text-slate-100">{doctor.name}</p>
                   <p className="text-sm text-slate-400">{doctor.specialization}</p>
@@ -522,7 +590,7 @@ function AdminDashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10">
-                  {allDoctors.map((doctor) => (
+                  {filteredDoctors.map((doctor) => (
                     <tr key={doctor._id} className="hover:bg-white/5">
                       <td className="px-4 py-3">
                         <p className="font-bold text-slate-100">{doctor.name}</p>
@@ -545,7 +613,7 @@ function AdminDashboardPage() {
         {activeTab === 'patients' && (
           <div className="space-y-5">
             <div className="space-y-3 lg:hidden">
-              {patients.map((patient) => (
+              {filteredPatients.map((patient) => (
                 <article key={patient._id} className="rounded-xl border border-white/10 bg-white/5 p-4">
                   <p className="text-base font-bold text-slate-100">{patient.name}</p>
                   <p className="text-sm text-slate-400">{patient.email}</p>
@@ -570,7 +638,7 @@ function AdminDashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10">
-                  {patients.map((patient) => (
+                  {filteredPatients.map((patient) => (
                     <tr key={patient._id} className="hover:bg-white/5">
                       <td className="px-4 py-3 font-bold text-slate-100">{patient.name}</td>
                       <td className="px-4 py-3 text-slate-300">{patient.email}</td>
@@ -590,7 +658,7 @@ function AdminDashboardPage() {
         {activeTab === 'appointments' && (
           <div className="space-y-5">
             <div className="space-y-3 lg:hidden">
-              {appointments.map((appointment) => (
+              {filteredAppointments.map((appointment) => (
                 <article key={appointment._id} className="rounded-xl border border-white/10 bg-white/5 p-4">
                   <p className="text-base font-bold text-slate-100">{appointment.patientId?.name || '-'}</p>
                   <p className="text-sm text-slate-400">Doctor: {appointment.doctorId?.name || '-'}</p>
@@ -613,7 +681,7 @@ function AdminDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
-                {appointments.map((appointment) => (
+                {filteredAppointments.map((appointment) => (
                   <tr key={appointment._id} className="hover:bg-white/5">
                     <td className="px-4 py-3 text-slate-300">{appointment.patientId?.name || '-'}</td>
                     <td className="px-4 py-3 text-slate-300">{appointment.doctorId?.name || '-'}</td>
