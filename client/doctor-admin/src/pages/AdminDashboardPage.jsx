@@ -269,21 +269,21 @@ function AdminDashboardPage() {
 
   return (
     <AdminShell>
-      <div className="space-y-6">
-        <div className="rounded-2xl border border-blue-500/20 bg-gradient-to-r from-blue-900/30 to-purple-900/30 p-5 sm:p-8">
-          <h1 className="text-2xl font-black text-white sm:text-4xl">Multi-Hospital Admin Dashboard</h1>
-          <p className="mt-2 text-slate-300">Perform CRUD on hospitals, doctors, and patients with hospital-wise tracking.</p>
+      <div className="space-y-5 sm:space-y-6">
+        <div className="rounded-2xl border border-blue-500/20 bg-gradient-to-r from-blue-900/30 to-purple-900/30 p-4 sm:p-6 lg:p-8">
+          <h1 className="text-xl font-black text-white sm:text-3xl lg:text-4xl">Multi-Hospital Admin Dashboard</h1>
+          <p className="mt-2 text-sm text-slate-300 sm:text-base">Perform CRUD on hospitals, doctors, and patients with hospital-wise tracking.</p>
         </div>
 
-        {statusMessage && <div className="rounded-xl border border-emerald-400/40 bg-emerald-400/10 px-4 py-3 text-emerald-300 font-semibold">{statusMessage}</div>}
-        {error && <div className="rounded-xl border border-rose-400/40 bg-rose-400/10 px-4 py-3 text-rose-300 font-semibold">{error}</div>}
+        {statusMessage && <div className="rounded-xl border border-emerald-400/40 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-300">{statusMessage}</div>}
+        {error && <div className="rounded-xl border border-rose-400/40 bg-rose-400/10 px-4 py-3 text-sm font-semibold text-rose-300">{error}</div>}
 
-        <div className="flex gap-2 border-b border-white/10 overflow-x-auto">
+        <div className="flex gap-1.5 overflow-x-auto border-b border-white/10 pb-1 sm:gap-2">
           {['overview', 'hospitals', 'doctors', 'patients', 'appointments'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-3 text-sm font-bold uppercase tracking-wide transition whitespace-nowrap ${
+              className={`whitespace-nowrap rounded-t-lg px-3 py-2.5 text-xs font-bold uppercase tracking-wide transition sm:text-sm ${
                 activeTab === tab
                   ? 'border-b-2 border-blue-400 text-blue-300'
                   : 'text-slate-400 hover:text-slate-200'
@@ -312,8 +312,8 @@ function AdminDashboardPage() {
         )}
 
         {activeTab === 'hospitals' && (
-          <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-            <form onSubmit={createHospital} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="grid gap-5 lg:gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+            <form onSubmit={createHospital} className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
               <h3 className="text-lg font-black">Create Hospital</h3>
               <div className="mt-4 grid gap-3">
                 {Object.entries(hospitalForm).map(([key, value]) => (
@@ -332,30 +332,30 @@ function AdminDashboardPage() {
               <button className="mt-4 w-full rounded-lg bg-mint px-4 py-2 text-sm font-black text-slatex sm:w-auto">Create Hospital</button>
             </form>
 
-            <div className="space-y-3 md:hidden">
+            <div className="space-y-3 lg:hidden">
               {hospitals.map((hospital) => (
                 <article key={hospital._id} className="rounded-xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-sm font-bold text-slate-100">{hospital.name}</p>
-                  <p className="text-xs text-slate-400">{hospital.email}</p>
-                  <p className="mt-2 text-xs text-slate-300">Status: {hospital.status}</p>
-                  <p className="text-xs text-slate-300">Doctors: {hospitalWiseStats.doctorCountByHospital.get(hospital._id) || 0}</p>
-                  <p className="text-xs text-slate-300">Visited Patients: {hospitalWiseStats.patientCountByHospital.get(hospital._id)?.size || 0}</p>
+                  <p className="text-base font-bold text-slate-100">{hospital.name}</p>
+                  <p className="text-sm text-slate-400">{hospital.email}</p>
+                  <p className="mt-2 text-sm text-slate-300">Status: {hospital.status}</p>
+                  <p className="text-sm text-slate-300">Doctors: {hospitalWiseStats.doctorCountByHospital.get(hospital._id) || 0}</p>
+                  <p className="text-sm text-slate-300">Visited Patients: {hospitalWiseStats.patientCountByHospital.get(hospital._id)?.size || 0}</p>
 
                   <div className="mt-3 flex flex-wrap gap-2">
                     {hospital.status === 'pending' && (
                       <>
-                        <button onClick={() => approveHospital(hospital._id)} className="rounded border border-emerald-300/50 px-2 py-1 text-xs text-emerald-200">Approve</button>
-                        <button onClick={() => rejectHospital(hospital._id)} className="rounded border border-rose-300/50 px-2 py-1 text-xs text-rose-200">Reject</button>
+                        <button onClick={() => approveHospital(hospital._id)} className="rounded border border-emerald-300/50 px-3 py-1.5 text-sm text-emerald-200">Approve</button>
+                        <button onClick={() => rejectHospital(hospital._id)} className="rounded border border-rose-300/50 px-3 py-1.5 text-sm text-rose-200">Reject</button>
                       </>
                     )}
-                    <button onClick={() => editHospital(hospital)} className="rounded border border-blue-300/50 px-2 py-1 text-xs text-blue-200">Edit</button>
-                    <button onClick={() => deleteHospital(hospital._id)} className="rounded border border-rose-300/50 px-2 py-1 text-xs text-rose-200">Delete</button>
+                    <button onClick={() => editHospital(hospital)} className="rounded border border-blue-300/50 px-3 py-1.5 text-sm text-blue-200">Edit</button>
+                    <button onClick={() => deleteHospital(hospital._id)} className="rounded border border-rose-300/50 px-3 py-1.5 text-sm text-rose-200">Delete</button>
                   </div>
                 </article>
               ))}
             </div>
 
-            <div className="-mx-1 hidden overflow-x-auto rounded-xl border border-white/10 bg-white/5 sm:mx-0 md:block">
+            <div className="-mx-1 hidden overflow-x-auto rounded-xl border border-white/10 bg-white/5 sm:mx-0 lg:block">
               <table className="min-w-full text-left text-sm">
                 <thead className="bg-white/10 text-xs uppercase tracking-wider text-slate-300">
                   <tr>
@@ -396,7 +396,7 @@ function AdminDashboardPage() {
 
         {activeTab === 'doctors' && (
           <div className="space-y-6">
-            <form onSubmit={createDoctor} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <form onSubmit={createDoctor} className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
               <h3 className="text-lg font-black">Create Doctor</h3>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <input
@@ -495,23 +495,23 @@ function AdminDashboardPage() {
               <button className="mt-4 w-full rounded-lg bg-mint px-4 py-2 text-sm font-black text-slatex sm:w-auto">Create Doctor</button>
             </form>
 
-            <div className="space-y-3 md:hidden">
+            <div className="space-y-3 lg:hidden">
               {allDoctors.map((doctor) => (
                 <article key={doctor._id} className="rounded-xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-sm font-bold text-slate-100">{doctor.name}</p>
-                  <p className="text-xs text-slate-400">{doctor.specialization}</p>
-                  <p className="mt-2 text-xs text-slate-300">Hospital: {doctor.hospitalId?.name || '-'}</p>
-                  <p className="text-xs text-slate-300">Status: {doctor.isApproved ? 'approved' : doctor.approvalStatus}</p>
+                  <p className="text-base font-bold text-slate-100">{doctor.name}</p>
+                  <p className="text-sm text-slate-400">{doctor.specialization}</p>
+                  <p className="mt-2 text-sm text-slate-300">Hospital: {doctor.hospitalId?.name || '-'}</p>
+                  <p className="text-sm text-slate-300">Status: {doctor.isApproved ? 'approved' : doctor.approvalStatus}</p>
 
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <button onClick={() => editDoctor(doctor)} className="rounded border border-blue-300/50 px-2 py-1 text-xs text-blue-200">Edit</button>
-                    <button onClick={() => deleteDoctor(doctor._id)} className="rounded border border-rose-300/50 px-2 py-1 text-xs text-rose-200">Delete</button>
+                    <button onClick={() => editDoctor(doctor)} className="rounded border border-blue-300/50 px-3 py-1.5 text-sm text-blue-200">Edit</button>
+                    <button onClick={() => deleteDoctor(doctor._id)} className="rounded border border-rose-300/50 px-3 py-1.5 text-sm text-rose-200">Delete</button>
                   </div>
                 </article>
               ))}
             </div>
 
-            <div className="-mx-1 hidden overflow-x-auto rounded-xl border border-white/10 bg-white/5 sm:mx-0 md:block">
+            <div className="-mx-1 hidden overflow-x-auto rounded-xl border border-white/10 bg-white/5 sm:mx-0 lg:block">
               <table className="min-w-full text-left text-sm">
                 <thead className="bg-white/10 text-xs uppercase tracking-wider text-slate-300">
                   <tr>
@@ -543,23 +543,23 @@ function AdminDashboardPage() {
         )}
 
         {activeTab === 'patients' && (
-          <>
-            <div className="space-y-3 md:hidden">
+          <div className="space-y-5">
+            <div className="space-y-3 lg:hidden">
               {patients.map((patient) => (
                 <article key={patient._id} className="rounded-xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-sm font-bold text-slate-100">{patient.name}</p>
-                  <p className="text-xs text-slate-400">{patient.email}</p>
-                  <p className="mt-2 text-xs text-slate-300">Contact: {patient.contactNumber}</p>
+                  <p className="text-base font-bold text-slate-100">{patient.name}</p>
+                  <p className="text-sm text-slate-400">{patient.email}</p>
+                  <p className="mt-2 text-sm text-slate-300">Contact: {patient.contactNumber}</p>
 
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <button onClick={() => editPatient(patient)} className="rounded border border-blue-300/50 px-2 py-1 text-xs text-blue-200">Edit</button>
-                    <button onClick={() => deletePatient(patient._id)} className="rounded border border-rose-300/50 px-2 py-1 text-xs text-rose-200">Delete</button>
+                    <button onClick={() => editPatient(patient)} className="rounded border border-blue-300/50 px-3 py-1.5 text-sm text-blue-200">Edit</button>
+                    <button onClick={() => deletePatient(patient._id)} className="rounded border border-rose-300/50 px-3 py-1.5 text-sm text-rose-200">Delete</button>
                   </div>
                 </article>
               ))}
             </div>
 
-            <div className="-mx-1 hidden overflow-x-auto rounded-xl border border-white/10 bg-white/5 sm:mx-0 md:block">
+            <div className="-mx-1 hidden overflow-x-auto rounded-xl border border-white/10 bg-white/5 sm:mx-0 lg:block">
               <table className="min-w-full text-left text-sm">
                 <thead className="bg-white/10 text-xs uppercase tracking-wider text-slate-300">
                   <tr>
@@ -584,24 +584,24 @@ function AdminDashboardPage() {
                 </tbody>
               </table>
             </div>
-          </>
+          </div>
         )}
 
         {activeTab === 'appointments' && (
-          <>
-            <div className="space-y-3 md:hidden">
+          <div className="space-y-5">
+            <div className="space-y-3 lg:hidden">
               {appointments.map((appointment) => (
                 <article key={appointment._id} className="rounded-xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-sm font-bold text-slate-100">{appointment.patientId?.name || '-'}</p>
-                  <p className="text-xs text-slate-400">Doctor: {appointment.doctorId?.name || '-'}</p>
-                  <p className="text-xs text-slate-300">Hospital: {appointment.doctorId?.hospitalId?.name || '-'}</p>
-                  <p className="text-xs text-slate-300">Date: {new Date(appointment.appointmentDate).toLocaleDateString()}</p>
-                  <p className="text-xs text-slate-300">Status: {appointment.status}</p>
+                  <p className="text-base font-bold text-slate-100">{appointment.patientId?.name || '-'}</p>
+                  <p className="text-sm text-slate-400">Doctor: {appointment.doctorId?.name || '-'}</p>
+                  <p className="text-sm text-slate-300">Hospital: {appointment.doctorId?.hospitalId?.name || '-'}</p>
+                  <p className="text-sm text-slate-300">Date: {new Date(appointment.appointmentDate).toLocaleDateString()}</p>
+                  <p className="text-sm text-slate-300">Status: {appointment.status}</p>
                 </article>
               ))}
             </div>
 
-            <div className="-mx-1 hidden overflow-x-auto rounded-xl border border-white/10 bg-white/5 sm:mx-0 md:block">
+            <div className="-mx-1 hidden overflow-x-auto rounded-xl border border-white/10 bg-white/5 sm:mx-0 lg:block">
             <table className="min-w-full text-left text-sm">
               <thead className="bg-white/10 text-xs uppercase tracking-wider text-slate-300">
                 <tr>
@@ -625,7 +625,7 @@ function AdminDashboardPage() {
               </tbody>
             </table>
             </div>
-          </>
+          </div>
         )}
       </div>
     </AdminShell>
