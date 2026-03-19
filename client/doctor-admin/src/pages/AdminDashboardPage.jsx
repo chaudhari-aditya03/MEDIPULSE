@@ -14,6 +14,19 @@ const hospitalInitial = {
   description: '',
 };
 
+const doctorInitial = {
+  name: '',
+  email: '',
+  password: '',
+  age: '',
+  contactNumber: '',
+  specialization: '',
+  experience: '',
+  licenseNumber: '',
+  address: '',
+  hospitalId: '',
+};
+
 function AdminDashboardPage() {
   const session = getSession();
   const token = session?.token;
@@ -26,6 +39,7 @@ function AdminDashboardPage() {
   const [appointments, setAppointments] = useState([]);
 
   const [hospitalForm, setHospitalForm] = useState(hospitalInitial);
+  const [doctorForm, setDoctorForm] = useState(doctorInitial);
 
   const [statusMessage, setStatusMessage] = useState('');
   const [error, setError] = useState('');
@@ -155,6 +169,28 @@ function AdminDashboardPage() {
     try {
       await apiFetch(`/hospitals/${id}`, { method: 'DELETE', token });
       setSuccess('Hospital deleted successfully');
+      await loadDashboardData();
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  };
+
+  const createDoctor = async (event) => {
+    event.preventDefault();
+    setError('');
+
+    try {
+      await apiFetch('/doctors', {
+        method: 'POST',
+        token,
+        body: {
+          ...doctorForm,
+          age: Number(doctorForm.age),
+          experience: Number(doctorForm.experience),
+        },
+      });
+      setDoctorForm(doctorInitial);
+      setSuccess('Doctor created successfully');
       await loadDashboardData();
     } catch (requestError) {
       setError(requestError.message);
@@ -359,7 +395,106 @@ function AdminDashboardPage() {
         )}
 
         {activeTab === 'doctors' && (
-          <>
+          <div className="space-y-6">
+            <form onSubmit={createDoctor} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+              <h3 className="text-lg font-black">Create Doctor</h3>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <input
+                  name="name"
+                  value={doctorForm.name}
+                  onChange={(event) => setDoctorForm((prev) => ({ ...prev, name: event.target.value }))}
+                  placeholder="Doctor name"
+                  required
+                  className="rounded-lg border border-white/15 bg-[#101a30] px-3 py-2 text-sm"
+                />
+                <input
+                  name="email"
+                  value={doctorForm.email}
+                  onChange={(event) => setDoctorForm((prev) => ({ ...prev, email: event.target.value }))}
+                  placeholder="Email"
+                  type="email"
+                  required
+                  className="rounded-lg border border-white/15 bg-[#101a30] px-3 py-2 text-sm"
+                />
+                <input
+                  name="password"
+                  value={doctorForm.password}
+                  onChange={(event) => setDoctorForm((prev) => ({ ...prev, password: event.target.value }))}
+                  placeholder="Password"
+                  type="password"
+                  required
+                  className="rounded-lg border border-white/15 bg-[#101a30] px-3 py-2 text-sm"
+                />
+                <input
+                  name="specialization"
+                  value={doctorForm.specialization}
+                  onChange={(event) => setDoctorForm((prev) => ({ ...prev, specialization: event.target.value }))}
+                  placeholder="Specialization"
+                  required
+                  className="rounded-lg border border-white/15 bg-[#101a30] px-3 py-2 text-sm"
+                />
+                <input
+                  name="age"
+                  value={doctorForm.age}
+                  onChange={(event) => setDoctorForm((prev) => ({ ...prev, age: event.target.value }))}
+                  placeholder="Age"
+                  type="number"
+                  min="21"
+                  required
+                  className="rounded-lg border border-white/15 bg-[#101a30] px-3 py-2 text-sm"
+                />
+                <input
+                  name="experience"
+                  value={doctorForm.experience}
+                  onChange={(event) => setDoctorForm((prev) => ({ ...prev, experience: event.target.value }))}
+                  placeholder="Experience (years)"
+                  type="number"
+                  min="0"
+                  required
+                  className="rounded-lg border border-white/15 bg-[#101a30] px-3 py-2 text-sm"
+                />
+                <input
+                  name="contactNumber"
+                  value={doctorForm.contactNumber}
+                  onChange={(event) => setDoctorForm((prev) => ({ ...prev, contactNumber: event.target.value }))}
+                  placeholder="Contact number"
+                  required
+                  className="rounded-lg border border-white/15 bg-[#101a30] px-3 py-2 text-sm"
+                />
+                <input
+                  name="licenseNumber"
+                  value={doctorForm.licenseNumber}
+                  onChange={(event) => setDoctorForm((prev) => ({ ...prev, licenseNumber: event.target.value }))}
+                  placeholder="License number"
+                  required
+                  className="rounded-lg border border-white/15 bg-[#101a30] px-3 py-2 text-sm"
+                />
+                <input
+                  name="address"
+                  value={doctorForm.address}
+                  onChange={(event) => setDoctorForm((prev) => ({ ...prev, address: event.target.value }))}
+                  placeholder="Address"
+                  required
+                  className="rounded-lg border border-white/15 bg-[#101a30] px-3 py-2 text-sm sm:col-span-2"
+                />
+                <select
+                  name="hospitalId"
+                  value={doctorForm.hospitalId}
+                  onChange={(event) => setDoctorForm((prev) => ({ ...prev, hospitalId: event.target.value }))}
+                  required
+                  className="rounded-lg border border-white/15 bg-[#101a30] px-3 py-2 text-sm sm:col-span-2"
+                >
+                  <option value="">Select Hospital</option>
+                  {hospitals.map((hospital) => (
+                    <option key={hospital._id} value={hospital._id}>
+                      {hospital.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button className="mt-4 w-full rounded-lg bg-mint px-4 py-2 text-sm font-black text-slatex sm:w-auto">Create Doctor</button>
+            </form>
+
             <div className="space-y-3 md:hidden">
               {allDoctors.map((doctor) => (
                 <article key={doctor._id} className="rounded-xl border border-white/10 bg-white/5 p-4">
@@ -404,7 +539,7 @@ function AdminDashboardPage() {
                 </tbody>
               </table>
             </div>
-          </>
+          </div>
         )}
 
         {activeTab === 'patients' && (
