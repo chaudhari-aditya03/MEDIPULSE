@@ -10,6 +10,7 @@ import doctorRouter from './routes/doctorRouter.js';
 import appointmentRouter from './routes/appointmentRouter.js';
 import authRouter from './routes/authRouter.js';
 import hospitalRouter from './routes/hospitalRouter.js';
+import visitorCounterRouter from './routes/visitorCounterRouter.js';
 import dbConnect from './utils/dbConnect.js';
 import { startReminderScheduler, stopReminderScheduler } from './services/reminderService.js';
 
@@ -56,6 +57,7 @@ app.use('/doctors', doctorRouter);
 app.use('/appointments', appointmentRouter);
 app.use('/auth', authRouter);
 app.use('/hospitals', hospitalRouter);
+app.use('/visitor-counter', visitorCounterRouter);
 
 // ===== SOCKET.IO EVENT HANDLERS =====
 const connectedUsers = new Map(); // { userId: { socketId, role, rooms } }

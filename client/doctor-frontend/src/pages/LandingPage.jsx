@@ -10,6 +10,7 @@ function LandingPage() {
     todayAppointments: 0,
     recentBooking: null,
   });
+  const [visitorCount, setVisitorCount] = useState(0);
 
   useEffect(() => {
     const loadStats = async () => {
@@ -27,6 +28,27 @@ function LandingPage() {
     };
 
     loadStats();
+  }, []);
+
+  // Track visitor on page load
+  useEffect(() => {
+    const trackVisitor = async () => {
+      try {
+        // Track the visitor
+        await fetch('https://medipulse-1sje.onrender.com/visitor-counter/track', {
+          method: 'POST',
+        });
+        
+        // Fetch and display the current count
+        const response = await fetch('https://medipulse-1sje.onrender.com/visitor-counter/total');
+        const data = await response.json();
+        setVisitorCount(data.count || 0);
+      } catch {
+        // Silently fail if visitor counter is unavailable
+      }
+    };
+
+    trackVisitor();
   }, []);
 
   const features = [
@@ -136,6 +158,10 @@ function LandingPage() {
                       ? `${platformStats.recentBooking.patientName} • ${platformStats.recentBooking.doctorSpecialization} • ${platformStats.recentBooking.appointmentTime}`
                       : 'No recent booking yet'}
                   </p>
+                </div>
+                <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3">
+                  <p className="text-[11px] text-slate-300">Website Visitors</p>
+                  <p className="mt-1 text-2xl font-black">👁️ {visitorCount}</p>
                 </div>
               </div>
             </div>
