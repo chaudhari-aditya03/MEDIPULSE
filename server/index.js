@@ -49,7 +49,7 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 
 app.get('/', (req, res) => {
-  res.send('Welcomes to the Doctor Appointment System!');
+  res.send('Welcome to the Doctor Appointment System! [v2]');
 });
 
 app.use('/patients', patientRouter);
