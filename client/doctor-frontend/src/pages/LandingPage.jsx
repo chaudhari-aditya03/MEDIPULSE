@@ -35,16 +35,27 @@ function LandingPage() {
     const trackVisitor = async () => {
       try {
         // Track the visitor
-        await fetch('https://medipulse-1sje.onrender.com/visitor-counter/track', {
+        const trackResponse = await fetch('https://medipulse-1sje.onrender.com/visitor-counter/track', {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
         });
         
+        if (!trackResponse.ok) {
+          console.error('Track failed:', trackResponse.status, trackResponse.statusText);
+        }
+        
         // Fetch and display the current count
-        const response = await fetch('https://medipulse-1sje.onrender.com/visitor-counter/total');
-        const data = await response.json();
+        const countResponse = await fetch('https://medipulse-1sje.onrender.com/visitor-counter/total');
+        if (!countResponse.ok) {
+          console.error('Fetch count failed:', countResponse.status);
+          return;
+        }
+        
+        const data = await countResponse.json();
+        console.log('Visitor count:', data.count);
         setVisitorCount(data.count || 0);
-      } catch {
-        // Silently fail if visitor counter is unavailable
+      } catch (error) {
+        console.error('Visitor counter error:', error);
       }
     };
 
