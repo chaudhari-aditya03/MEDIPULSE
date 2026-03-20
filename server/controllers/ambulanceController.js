@@ -3,6 +3,7 @@ import {
 	getAllAmbulancesService,
 	getPublicAmbulancesService,
 	getAmbulanceByIdService,
+	getMyAmbulanceProfileService,
 	updateAmbulanceService,
 	deleteAmbulanceService,
 	updateAmbulanceLocationService,
@@ -40,6 +41,19 @@ const getPublicAmbulancesController = async (req, res) => {
 const getAmbulanceByIdController = async (req, res) => {
 	try {
 		const result = await getAmbulanceByIdService(req.params.id);
+		return res.status(200).json(result);
+	} catch (error) {
+		if (error.message === "Ambulance not found") {
+			return res.status(404).json({ error: error.message });
+		}
+
+		return res.status(400).json({ error: error.message });
+	}
+};
+
+const getMyAmbulanceProfileController = async (req, res) => {
+	try {
+		const result = await getMyAmbulanceProfileService(req.userId);
 		return res.status(200).json(result);
 	} catch (error) {
 		if (error.message === "Ambulance not found") {
@@ -116,6 +130,7 @@ export {
 	getAllAmbulancesController,
 	getPublicAmbulancesController,
 	getAmbulanceByIdController,
+	getMyAmbulanceProfileController,
 	updateAmbulanceController,
 	deleteAmbulanceController,
 	updateAmbulanceLocationController,

@@ -1,4 +1,5 @@
 import Ambulance from "../models/ambulanceModel.js";
+import bcrypt from "bcrypt";
 
 const toPoint = (lng, lat) => {
 	const parsedLng = Number(lng);
@@ -15,14 +16,30 @@ const toPoint = (lng, lat) => {
 };
 
 const createAmbulanceService = async (payload) => {
-	const { lng, lat, ...rest } = payload || {};
+	const { lng, lat, password, ...rest } = payload || {};
 
 	if (!rest?.driverBloodGroup) {
 		throw new Error("driverBloodGroup is required");
 	}
 
+	if (!rest?.driverEmail) {
+		throw new Error("driverEmail is required");
+	}
+
+	if (!password) {
+		throw new Error("password is required");
+	}
+
+	const normalizedEmail = String(rest.driverEmail).trim().toLowerCase();
+	const existingWithEmail = await Ambulance.findOne({ driverEmail: normalizedEmail });
+	if (existingWithEmail) {
+		throw new Error("driverEmail already in use");
+	}
+
 	const ambulance = await Ambulance.create({
 		...rest,
+		driverEmail: normalizedEmail,
+		password: await bcrypt.hash(String(password), 10),
 		location: toPoint(lng, lat),
 	});
 
@@ -52,6 +69,23 @@ const getPublicAmbulancesService = async () => {
 
 const getAmbulanceByIdService = async (id) => {
 	const ambulance = await Ambulance.findById(id);
+
+	if (!ambulance) {
+		throw new Error("Ambulance not found");
+	}
+
+	return ambulance;
+};
+
+const getMyAmbulanceProfileService = async (actorId) => {
+	if (!actorId) {
+		throw new Error("Ambulance not found");
+	}
+
+	const ambulance = await Ambulance.findById(actorId).populate({
+		path: "hospitalId",
+		select: "name email phone address",
+	});
 
 	if (!ambulance) {
 		throw new Error("Ambulance not found");
@@ -151,6 +185,7 @@ export {
 	getAllAmbulancesService,
 	getPublicAmbulancesService,
 	getAmbulanceByIdService,
+	getMyAmbulanceProfileService,
 	updateAmbulanceService,
 	deleteAmbulanceService,
 	updateAmbulanceLocationService,

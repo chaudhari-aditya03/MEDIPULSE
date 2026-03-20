@@ -163,6 +163,66 @@ export const broadcastEmergencyAlert = (payload = {}) => {
 };
 
 /**
+ * Broadcast emergency status updates to patient/hospital/doctor/admin channels.
+ */
+export const broadcastEmergencyStatusUpdate = (payload = {}) => {
+  try {
+    const statusPayload = {
+      emergencyId: payload.emergencyId,
+      status: payload.status,
+      patientId: payload.patientId || null,
+      hospitalId: payload.hospitalId || null,
+      doctorId: payload.doctorId || null,
+      ambulanceId: payload.ambulanceId || null,
+      ambulance: payload.ambulance || null,
+      updatedAt: new Date().toISOString(),
+    };
+
+    io.emit('emergency:statusChanged', statusPayload);
+
+    if (payload?.patientId) {
+      io.to(`patient:${String(payload.patientId)}`).emit('emergency:statusChangedPatient', statusPayload);
+    }
+
+    if (payload?.hospitalId) {
+      io.to(`hospital:${String(payload.hospitalId)}`).emit('emergency:statusChangedHospital', statusPayload);
+    }
+
+    if (payload?.doctorId) {
+      io.to(`doctor:${String(payload.doctorId)}`).emit('emergency:statusChangedDoctor', statusPayload);
+    }
+
+    io.to('admin:notifications').emit('emergency:statusChangedAdmin', statusPayload);
+  } catch (error) {
+    console.error('Error broadcasting emergency status:', error.message);
+  }
+};
+
+/**
+ * Broadcast blood request payload to connected clients.
+ */
+export const broadcastNewBloodRequest = (payload = {}) => {
+  try {
+    const requestPayload = {
+      requestId: payload.requestId,
+      requesterId: payload.requesterId,
+      requesterRole: payload.requesterRole,
+      bloodGroup: payload.bloodGroup,
+      unitsRequired: payload.unitsRequired,
+      location: payload.location || null,
+      assignedBloodBankId: payload.assignedBloodBankId || null,
+      createdAt: new Date().toISOString(),
+    };
+
+    io.emit('bloodRequest:new', requestPayload);
+    io.to('admin:notifications').emit('bloodRequest:newAdmin', requestPayload);
+    io.to('hospitals:blood').emit('bloodRequest:newHospital', requestPayload);
+  } catch (error) {
+    console.error('Error broadcasting blood request:', error.message);
+  }
+};
+
+/**
  * Get connected users count
  */
 export const getConnectedUsersCount = () => {

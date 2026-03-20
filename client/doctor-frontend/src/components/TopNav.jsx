@@ -26,7 +26,7 @@ function TopNav() {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-ink/80 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-[#091126]/82 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
         <Link to="/" className="text-lg font-black uppercase tracking-[0.2em] text-white sm:text-xl">
           MediPulse
@@ -35,23 +35,18 @@ function TopNav() {
         <button
           type="button"
           onClick={() => setMobileOpen((prev) => !prev)}
-          className="rounded-lg border border-white/20 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-200 md:hidden"
+          className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-200 md:hidden"
         >
           Menu
         </button>
 
-        <nav className="hidden items-center gap-2 md:flex md:gap-3">
-          <NavLink to="/" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
+        <nav className="hidden items-center gap-2 md:flex md:gap-2.5">
+          <NavLink to="/" className="rounded-full border border-transparent px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-white/15 hover:bg-white/10">
             Home
           </NavLink>
-          {session?.role === 'hospital' && (
-            <NavLink to="/ambulance" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
-              Ambulance Module
-            </NavLink>
-          )}
           {!session && (
             <>
-              <NavLink to="/login" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
+              <NavLink to="/login" className="rounded-full border border-transparent px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-white/15 hover:bg-white/10">
                 Login
               </NavLink>
               <NavLink to="/register" className="rounded-full bg-white px-4 py-2 text-sm font-bold text-ink">
@@ -63,28 +58,33 @@ function TopNav() {
             </>
           )}
           {session?.role === 'doctor' && (
-            <NavLink to="/doctor/dashboard" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
+            <NavLink to="/doctor/dashboard" className="rounded-full border border-transparent px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-white/15 hover:bg-white/10">
               Doctor Dashboard
             </NavLink>
           )}
           {session?.role === 'doctor' && (
-            <NavLink to="/doctor/profile" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
+            <NavLink to="/doctor/profile" className="rounded-full border border-transparent px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-white/15 hover:bg-white/10">
               Doctor Profile
             </NavLink>
           )}
           {session?.role === 'patient' && (
-            <NavLink to="/patient/dashboard" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
+            <NavLink to="/patient/dashboard" className="rounded-full border border-transparent px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-white/15 hover:bg-white/10">
               Patient Dashboard
             </NavLink>
           )}
           {session?.role === 'patient' && (
-            <NavLink to="/patient/profile" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
+            <NavLink to="/patient/profile" className="rounded-full border border-transparent px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-white/15 hover:bg-white/10">
               My Profile
             </NavLink>
           )}
           {session?.role === 'hospital' && (
-            <NavLink to="/hospital/dashboard" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
+            <NavLink to="/hospital/dashboard" className="rounded-full border border-transparent px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-white/15 hover:bg-white/10">
               Hospital Dashboard
+            </NavLink>
+          )}
+          {session?.role === 'driver' && (
+            <NavLink to="/ambulance/driver/dashboard" className="rounded-full border border-transparent px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-white/15 hover:bg-white/10">
+              Driver Dashboard
             </NavLink>
           )}
           {session && (
@@ -101,11 +101,6 @@ function TopNav() {
             <NavLink to="/" onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
               Home
             </NavLink>
-            {session?.role === 'hospital' && (
-              <NavLink to="/ambulance" onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
-                Ambulance Module
-              </NavLink>
-            )}
             {!session && (
               <>
                 <NavLink to="/login" onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
@@ -142,6 +137,11 @@ function TopNav() {
             {session?.role === 'hospital' && (
               <NavLink to="/hospital/dashboard" onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
                 Hospital Dashboard
+              </NavLink>
+            )}
+            {session?.role === 'driver' && (
+              <NavLink to="/ambulance/driver/dashboard" onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
+                Driver Dashboard
               </NavLink>
             )}
             {session && (

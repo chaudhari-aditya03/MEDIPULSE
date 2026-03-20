@@ -45,7 +45,7 @@ function LoginPage() {
       <div className="mx-auto max-w-lg px-4 py-10 sm:px-6 sm:py-16">
         <form onSubmit={handleSubmit} className="space-y-6 rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-md sm:p-8">
           <h1 className="text-2xl font-black sm:text-3xl">Welcome Back</h1>
-          <p className="text-sm text-slate-300">Login using your doctor, patient, hospital, or admin credentials.</p>
+          <p className="text-sm text-slate-300">Login using your doctor, patient, hospital, driver, or admin credentials.</p>
 
           <label className="block space-y-2">
             <span className="text-sm font-semibold text-slate-200">Email</span>
@@ -83,6 +83,7 @@ function LoginPage() {
               <option value="patient">Patient</option>
               <option value="doctor">Doctor</option>
               <option value="hospital">Hospital</option>
+              <option value="driver">Ambulance Driver</option>
               <option value="admin">Admin</option>
             </select>
           </label>

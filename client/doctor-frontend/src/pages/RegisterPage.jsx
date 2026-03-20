@@ -42,6 +42,21 @@ const doctorInitial = {
   activeHoursEnd: '17:00',
 };
 
+const driverInitial = {
+  role: 'driver',
+  driverName: '',
+  vehicleNumber: '',
+  driverPhone: '',
+  email: '',
+  password: '',
+  driverBloodGroup: '',
+  address: '',
+  hospitalId: '',
+  hospitalName: '',
+  lng: '',
+  lat: '',
+};
+
 function RegisterPage() {
   const navigate = useNavigate();
   const [role, setRole] = useState('patient');
@@ -52,7 +67,11 @@ function RegisterPage() {
   const [locating, setLocating] = useState(false);
   const [locationMessage, setLocationMessage] = useState('');
 
-  const activeTemplate = useMemo(() => (role === 'patient' ? patientInitial : doctorInitial), [role]);
+  const activeTemplate = useMemo(() => {
+    if (role === 'doctor') return doctorInitial;
+    if (role === 'driver') return driverInitial;
+    return patientInitial;
+  }, [role]);
 
   const fillLocationFromBrowser = async () => {
     setLocating(true);
@@ -75,7 +94,7 @@ function RegisterPage() {
 
   const changeRole = (newRole) => {
     setRole(newRole);
-    const template = newRole === 'patient' ? patientInitial : doctorInitial;
+    const template = newRole === 'patient' ? patientInitial : newRole === 'doctor' ? doctorInitial : driverInitial;
     setForm({
       ...template,
       lng: form.lng || '',
@@ -85,7 +104,7 @@ function RegisterPage() {
   };
 
   useEffect(() => {
-    if (role !== 'doctor') return;
+    if (!['doctor', 'driver'].includes(role)) return;
 
     apiFetch('/hospitals')
       .then((result) => setHospitals(result))
@@ -114,7 +133,7 @@ function RegisterPage() {
         method: 'POST',
         body: {
           ...restForm,
-          age: Number(restForm.age),
+          ...(role !== 'driver' ? { age: Number(restForm.age) } : {}),
           ...(role === 'doctor'
             ? {
                 experience: Number(restForm.experience),
@@ -149,9 +168,12 @@ function RegisterPage() {
             <button type="button" onClick={() => changeRole('doctor')} className={`rounded-full px-5 py-2 text-sm font-bold ${role === 'doctor' ? 'bg-neon text-ink' : 'border border-white/20 text-slate-200'}`}>
               Doctor
             </button>
+            <button type="button" onClick={() => changeRole('driver')} className={`rounded-full px-5 py-2 text-sm font-bold ${role === 'driver' ? 'bg-neon text-ink' : 'border border-white/20 text-slate-200'}`}>
+              Ambulance Driver
+            </button>
           </div>
 
-          {role === 'doctor' && hospitals.length > 0 && (
+          {['doctor', 'driver'].includes(role) && hospitals.length > 0 && (
             <label className="block space-y-2">
               <span className="text-sm font-semibold text-slate-200">Associated Hospital</span>
               <select
@@ -171,7 +193,7 @@ function RegisterPage() {
             </label>
           )}
 
-          {role === 'doctor' && hospitals.length === 0 && (
+          {['doctor', 'driver'].includes(role) && hospitals.length === 0 && (
             <p className="rounded-xl border border-amber-300/40 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
               No approved hospitals are available right now. Ask your hospital admin to register and get approved first.
             </p>
@@ -185,11 +207,39 @@ function RegisterPage() {
               const isPassword = key === 'password';
               const type = isPassword ? 'password' : key === 'email' ? 'email' : 'text';
 
-              if (role === 'doctor' && key === 'hospitalId') return null;
+              if (['doctor', 'driver'].includes(role) && key === 'hospitalId') return null;
+
+              if (key === 'hospitalName' && hospitals.length > 0) return null;
+
+              if (key === 'driverBloodGroup') {
+                return (
+                  <label key={key} className="block space-y-2">
+                    <span className="text-sm font-semibold capitalize text-slate-200">Driver Blood Group</span>
+                    <select
+                      name={key}
+                      value={form[key] || ''}
+                      onChange={handleChange}
+                      required
+                      className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 outline-none transition focus:border-neon"
+                    >
+                      <option value="">Select blood group</option>
+                      <option value="A+">A+</option>
+                      <option value="A-">A-</option>
+                      <option value="B+">B+</option>
+                      <option value="B-">B-</option>
+                      <option value="AB+">AB+</option>
+                      <option value="AB-">AB-</option>
+                      <option value="O+">O+</option>
+                      <option value="O-">O-</option>
+                    </select>
+                  </label>
+                );
+              }
+
               return (
                 <label key={key} className="block space-y-2">
                   <span className="text-sm font-semibold capitalize text-slate-200">
-                    {key === 'homeAddress' ? 'Doctor Home Address' : key === 'buildingAddress' ? 'Building / House No.' : key === 'laneAddress' ? 'Lane / Area' : key === 'bloodGroup' ? 'Blood Group' : key === 'lng' ? 'Longitude (Auto)' : key === 'lat' ? 'Latitude (Auto)' : key}
+                    {key === 'homeAddress' ? 'Doctor Home Address' : key === 'buildingAddress' ? 'Building / House No.' : key === 'laneAddress' ? 'Lane / Area' : key === 'bloodGroup' ? 'Blood Group' : key === 'driverName' ? 'Driver Name' : key === 'hospitalName' ? 'Hospital Name' : key === 'lng' ? 'Longitude (Auto)' : key === 'lat' ? 'Latitude (Auto)' : key}
                   </span>
                   <input
                     type={type}
@@ -204,20 +254,39 @@ function RegisterPage() {
             })}
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs text-slate-300">Location is fetched from browser permission so users do not need to enter coordinates manually.</p>
-              <button
-                type="button"
-                onClick={fillLocationFromBrowser}
-                disabled={locating}
-                className="rounded-lg border border-white/20 px-3 py-2 text-xs font-bold text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {locating ? 'Fetching location...' : 'Use Current Location'}
-              </button>
+          {role !== 'driver' && (
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-slate-300">Location is fetched from browser permission so users do not need to enter coordinates manually.</p>
+                <button
+                  type="button"
+                  onClick={fillLocationFromBrowser}
+                  disabled={locating}
+                  className="rounded-lg border border-white/20 px-3 py-2 text-xs font-bold text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {locating ? 'Fetching location...' : 'Use Current Location'}
+                </button>
+              </div>
+              {locationMessage && <p className="mt-2 text-xs text-cyan-200">{locationMessage}</p>}
             </div>
-            {locationMessage && <p className="mt-2 text-xs text-cyan-200">{locationMessage}</p>}
-          </div>
+          )}
+
+          {role === 'driver' && (
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-slate-300">Driver registration can create ambulance profile with mapped hospital details.</p>
+                <button
+                  type="button"
+                  onClick={fillLocationFromBrowser}
+                  disabled={locating}
+                  className="rounded-lg border border-white/20 px-3 py-2 text-xs font-bold text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {locating ? 'Fetching location...' : 'Use Current Location'}
+                </button>
+              </div>
+              {locationMessage && <p className="mt-2 text-xs text-cyan-200">{locationMessage}</p>}
+            </div>
+          )}
 
           {role === 'doctor' && (
             <div className="grid gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 sm:grid-cols-2">

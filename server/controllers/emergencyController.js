@@ -9,6 +9,9 @@ import {
 	getEmergencyAlertsForRoleService,
 	getEmergencyAlertByIdService,
 	notifyAmbulanceDriverFromHospitalService,
+	removeEmergencyAlertService,
+	getLatestEmergencyForPatientService,
+	hideEmergencyForDriverService,
 } from "../services/emergencyService.js";
 
 const createEmergencyController = async (req, res) => {
@@ -35,7 +38,7 @@ const assignEmergencyController = async (req, res) => {
 
 const acceptEmergencyController = async (req, res) => {
 	try {
-		const result = await acceptEmergencyService(req.params.id);
+		const result = await acceptEmergencyService(req.params.id, req.userId, req.userRole);
 		return res.status(200).json(result);
 	} catch (error) {
 		if (error.message === "Emergency request not found") {
@@ -48,7 +51,7 @@ const acceptEmergencyController = async (req, res) => {
 
 const completeEmergencyController = async (req, res) => {
 	try {
-		const result = await completeEmergencyService(req.params.id);
+		const result = await completeEmergencyService(req.params.id, req.userId, req.userRole);
 		return res.status(200).json(result);
 	} catch (error) {
 		if (error.message === "Emergency request not found") {
@@ -61,7 +64,7 @@ const completeEmergencyController = async (req, res) => {
 
 const cancelEmergencyController = async (req, res) => {
 	try {
-		const result = await cancelEmergencyService(req.params.id);
+		const result = await cancelEmergencyService(req.params.id, req.userId, req.userRole);
 		return res.status(200).json(result);
 	} catch (error) {
 		if (error.message === "Emergency request not found") {
@@ -139,6 +142,52 @@ const notifyAmbulanceDriverController = async (req, res) => {
 	}
 };
 
+const removeEmergencyAlertController = async (req, res) => {
+	try {
+		const result = await removeEmergencyAlertService(req.params.id, req.userId, req.userRole);
+		return res.status(200).json(result);
+	} catch (error) {
+		if (error.message === "Emergency request not found") {
+			return res.status(404).json({ error: error.message });
+		}
+
+		if (
+			error.message === "Only hospital or admin can remove emergency alert" ||
+			error.message === "Only completed/cancelled alerts can be removed"
+		) {
+			return res.status(400).json({ error: error.message });
+		}
+
+		return res.status(400).json({ error: error.message });
+	}
+};
+
+const hideEmergencyForDriverController = async (req, res) => {
+	try {
+		const result = await hideEmergencyForDriverService(req.params.id, req.userId, req.userRole);
+		return res.status(200).json(result);
+	} catch (error) {
+		if (error.message === "Emergency request not found") {
+			return res.status(404).json({ error: error.message });
+		}
+
+		return res.status(400).json({ error: error.message });
+	}
+};
+
+const getMyLatestEmergencyController = async (req, res) => {
+	try {
+		if (req.userRole !== "patient") {
+			return res.status(403).json({ error: "Only patient can view latest emergency" });
+		}
+
+		const result = await getLatestEmergencyForPatientService(req.userId);
+		return res.status(200).json(result || null);
+	} catch (error) {
+		return res.status(400).json({ error: error.message });
+	}
+};
+
 export {
 	createEmergencyController,
 	assignEmergencyController,
@@ -148,6 +197,9 @@ export {
 	getEmergencySupportController,
 	triggerEmergencyAlertController,
 	getMyEmergencyAlertsController,
+	getMyLatestEmergencyController,
 	getEmergencyAlertByIdController,
 	notifyAmbulanceDriverController,
+	removeEmergencyAlertController,
+	hideEmergencyForDriverController,
 };

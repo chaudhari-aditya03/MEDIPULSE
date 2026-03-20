@@ -42,6 +42,8 @@ function AdminDashboardPage() {
   const [patients, setPatients] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [ambulances, setAmbulances] = useState([]);
+  const [donors, setDonors] = useState([]);
+  const [emergencyReports, setEmergencyReports] = useState([]);
 
   const [hospitalForm, setHospitalForm] = useState(hospitalInitial);
   const [doctorForm, setDoctorForm] = useState(doctorInitial);
@@ -61,13 +63,15 @@ function AdminDashboardPage() {
 
     try {
       setError('');
-      const [hospitalData, doctorData, pendingDoctorData, patientData, appointmentData, ambulanceData] = await Promise.all([
+      const [hospitalData, doctorData, pendingDoctorData, patientData, appointmentData, ambulanceData, donorData, emergencyData] = await Promise.all([
         apiFetch('/hospitals/admin/all', { token }).catch(() => []),
         apiFetch('/doctors', { token }).catch(() => []),
         apiFetch('/doctors/admin/pending', { token }).catch(() => []),
         apiFetch('/patients', { token }).catch(() => []),
         apiFetch('/appointments', { token }).catch(() => []),
         apiFetch('/api/ambulances', { token }).catch(() => []),
+        apiFetch('/api/donors', { token }).catch(() => ({ data: [] })),
+        apiFetch('/api/emergency/alerts/my?status=ALL', { token }).catch(() => []),
       ]);
 
       setHospitals(hospitalData);
@@ -76,6 +80,8 @@ function AdminDashboardPage() {
       setPatients(patientData);
       setAppointments(appointmentData);
       setAmbulances(ambulanceData);
+      setDonors(Array.isArray(donorData?.data) ? donorData.data : []);
+      setEmergencyReports(emergencyData);
     } catch (requestError) {
       setError(requestError.message);
     }
@@ -167,11 +173,55 @@ function AdminDashboardPage() {
       ambulance.vehicleNumber,
       ambulance.driverName,
       ambulance.driverPhone,
+      ambulance.driverEmail,
+      ambulance.driverBloodGroup,
       ambulance.status,
+      ambulance.hospitalId?.name,
       ambulance.hospitalId,
     )),
     [ambulances, normalizedSearchQuery],
   );
+
+  const filteredDonors = useMemo(
+    () => donors.filter((donor) => includesSearch(
+      donor.fullName,
+      donor.bloodGroup,
+      donor.contactNumber,
+      donor.alternateContactNumber,
+      donor.address,
+      donor.sourceType,
+      donor.availabilityStatus,
+      donor.isEligible ? 'eligible' : 'not eligible',
+    )),
+    [donors, normalizedSearchQuery],
+  );
+
+  const filteredEmergencyReports = useMemo(
+    () => emergencyReports.filter((report) => includesSearch(
+      report._id,
+      report.status,
+      report.patientSnapshot?.name,
+      report.patientSnapshot?.bloodGroup,
+      report.patientSnapshot?.contactNumber,
+      report.patientSnapshot?.address,
+      report.patientId?.name,
+      report.hospitalId?.name,
+      report.ambulanceId?.vehicleNumber,
+      report.ambulanceId?.driverName,
+      report.doctorId?.name,
+    )),
+    [emergencyReports, normalizedSearchQuery],
+  );
+
+  const allocatedCaseCountByAmbulance = useMemo(() => {
+    const map = new Map();
+    emergencyReports.forEach((item) => {
+      const ambulanceId = item?.ambulanceId?._id || item?.ambulanceId;
+      if (!ambulanceId) return;
+      map.set(String(ambulanceId), (map.get(String(ambulanceId)) || 0) + 1);
+    });
+    return map;
+  }, [emergencyReports]);
 
   const setSuccess = (message) => {
     setStatusMessage(message);
@@ -360,7 +410,7 @@ function AdminDashboardPage() {
         {error && <div className="rounded-xl border border-rose-400/40 bg-rose-400/10 px-4 py-3 text-sm font-semibold text-rose-300">{error}</div>}
 
         <div className="flex gap-1.5 overflow-x-auto border-b border-white/10 pb-1 sm:gap-2">
-          {['overview', 'hospitals', 'doctors', 'patients', 'ambulances', 'appointments'].map((tab) => (
+          {['overview', 'hospitals', 'doctors', 'patients', 'ambulance-module', 'donors', 'emergency-reports', 'appointments'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -397,8 +447,25 @@ function AdminDashboardPage() {
               <MetricCard label="Total Patients" value={filteredPatients.length} accent="indigo" />
               <MetricCard label="Appointments" value={filteredAppointments.length} accent="rose" />
               <MetricCard label="Ambulances" value={filteredAmbulances.length} accent="blue" />
+              <MetricCard label="Blood Donors" value={filteredDonors.length} accent="emerald" />
+              <MetricCard label="Emergency Reports" value={filteredEmergencyReports.length} accent="amber" />
               <MetricCard label="Completed" value={filteredAppointments.filter((item) => item.status === 'completed').length} accent="emerald" />
               <MetricCard label="Cancelled" value={filteredAppointments.filter((item) => item.status === 'cancelled').length} accent="rose" />
+            </div>
+            <div className="rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-black text-cyan-100">Ambulance Module</h3>
+                  <p className="mt-1 text-sm text-cyan-100/90">Fleet, driver and allocated-case monitoring is now managed from admin dashboard.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('ambulance-module')}
+                  className="rounded-lg border border-cyan-300/50 bg-cyan-300/20 px-3 py-2 text-xs font-bold uppercase tracking-wide text-cyan-100"
+                >
+                  Open Ambulance Module
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -695,15 +762,23 @@ function AdminDashboardPage() {
           </div>
         )}
 
-        {activeTab === 'ambulances' && (
+        {activeTab === 'ambulance-module' && (
           <div className="space-y-5">
+            <div className="rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-4">
+              <h3 className="text-lg font-black text-cyan-100">Ambulance Module</h3>
+              <p className="mt-1 text-sm text-cyan-100/90">Centralized ambulance operations view for admin supervision.</p>
+            </div>
             <div className="space-y-3 lg:hidden">
               {filteredAmbulances.map((ambulance) => (
                 <article key={ambulance._id} className="rounded-xl border border-white/10 bg-white/5 p-4">
                   <p className="text-base font-bold text-slate-100">{ambulance.vehicleNumber}</p>
                   <p className="text-sm text-slate-400">Driver: {ambulance.driverName} ({ambulance.driverPhone})</p>
+                  <p className="text-sm text-slate-300">Driver Email: {ambulance.driverEmail || '-'}</p>
+                  <p className="text-sm text-slate-300">Blood Group: {ambulance.driverBloodGroup || '-'}</p>
                   <p className="text-sm text-slate-300">Hospital: {ambulance.hospitalId?.name || ambulance.hospitalId || '-'}</p>
                   <p className="mt-2 text-sm text-slate-300">Status: {ambulance.status}</p>
+                  <p className="text-sm text-slate-300">Active: {ambulance.isActive ? 'Yes' : 'No'}</p>
+                  <p className="text-sm text-slate-300">Allocated Cases: {allocatedCaseCountByAmbulance.get(String(ambulance._id)) || 0}</p>
                   <p className="text-sm text-slate-300">
                     Location: {ambulance?.location?.coordinates?.[0] ?? '-'}, {ambulance?.location?.coordinates?.[1] ?? '-'}
                   </p>
@@ -720,18 +795,136 @@ function AdminDashboardPage() {
                     <th className="px-4 py-3">Hospital</th>
                     <th className="px-4 py-3">Location</th>
                     <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Allocated Cases</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10">
                   {filteredAmbulances.map((ambulance) => (
                     <tr key={ambulance._id} className="hover:bg-white/5">
                       <td className="px-4 py-3 font-bold text-slate-100">{ambulance.vehicleNumber}</td>
-                      <td className="px-4 py-3 text-slate-300">{ambulance.driverName} ({ambulance.driverPhone})</td>
+                      <td className="px-4 py-3 text-slate-300">
+                        <p>{ambulance.driverName} ({ambulance.driverPhone})</p>
+                        <p className="text-xs">{ambulance.driverEmail || '-'} | BG: {ambulance.driverBloodGroup || '-'}</p>
+                      </td>
                       <td className="px-4 py-3 text-slate-300">{ambulance.hospitalId?.name || ambulance.hospitalId || '-'}</td>
                       <td className="px-4 py-3 text-slate-300">
                         {ambulance?.location?.coordinates?.[0] ?? '-'}, {ambulance?.location?.coordinates?.[1] ?? '-'}
                       </td>
-                      <td className="px-4 py-3 text-slate-300">{ambulance.status}</td>
+                      <td className="px-4 py-3 text-slate-300">{ambulance.status} {ambulance.isActive ? '(Active)' : '(Inactive)'}</td>
+                      <td className="px-4 py-3 text-slate-300">{allocatedCaseCountByAmbulance.get(String(ambulance._id)) || 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'donors' && (
+          <div className="space-y-5">
+            <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-4">
+              <h3 className="text-lg font-black text-emerald-100">Blood Donor Registry</h3>
+              <p className="mt-1 text-sm text-emerald-100/90">All donors including public submissions with blood group and contact details.</p>
+            </div>
+
+            <div className="space-y-3 lg:hidden">
+              {filteredDonors.map((donor) => (
+                <article key={donor._id} className="rounded-xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-base font-bold text-slate-100">{donor.fullName}</p>
+                  <p className="text-sm text-slate-300">Blood Group: {donor.bloodGroup || '-'}</p>
+                  <p className="text-sm text-slate-300">Contact: {donor.contactNumber || '-'}</p>
+                  <p className="text-sm text-slate-300">Alternate: {donor.alternateContactNumber || '-'}</p>
+                  <p className="text-sm text-slate-300">Address: {donor.address || '-'}</p>
+                  <p className="text-sm text-slate-300">Source: {donor.sourceType || '-'}</p>
+                  <p className="text-sm text-slate-300">Status: {donor.availabilityStatus || '-'}</p>
+                  <p className="text-sm text-slate-300">Eligible: {donor.isEligible ? 'Yes' : 'No'}</p>
+                  <p className="text-sm text-slate-300">Active: {donor.isActive ? 'Yes' : 'No'}</p>
+                </article>
+              ))}
+              {filteredDonors.length === 0 && <p className="text-sm text-slate-300">No donors found.</p>}
+            </div>
+
+            <div className="-mx-1 hidden overflow-x-auto rounded-xl border border-white/10 bg-white/5 sm:mx-0 lg:block">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-white/10 text-xs uppercase tracking-wider text-slate-300">
+                  <tr>
+                    <th className="px-4 py-3">Name</th>
+                    <th className="px-4 py-3">Blood Group</th>
+                    <th className="px-4 py-3">Contact</th>
+                    <th className="px-4 py-3">Address</th>
+                    <th className="px-4 py-3">Source</th>
+                    <th className="px-4 py-3">Availability</th>
+                    <th className="px-4 py-3">Eligible</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                  {filteredDonors.map((donor) => (
+                    <tr key={donor._id} className="hover:bg-white/5">
+                      <td className="px-4 py-3 font-bold text-slate-100">{donor.fullName}</td>
+                      <td className="px-4 py-3 text-slate-300">{donor.bloodGroup || '-'}</td>
+                      <td className="px-4 py-3 text-slate-300">
+                        <p>{donor.contactNumber || '-'}</p>
+                        <p className="text-xs">{donor.alternateContactNumber || '-'}</p>
+                      </td>
+                      <td className="px-4 py-3 text-slate-300">{donor.address || '-'}</td>
+                      <td className="px-4 py-3 text-slate-300">{donor.sourceType || '-'}</td>
+                      <td className="px-4 py-3 text-slate-300">{donor.availabilityStatus || '-'}</td>
+                      <td className="px-4 py-3 text-slate-300">{donor.isEligible ? 'Yes' : 'No'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'emergency-reports' && (
+          <div className="space-y-5">
+            <div className="space-y-3 lg:hidden">
+              {filteredEmergencyReports.map((report) => (
+                <article key={report._id} className="rounded-xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-base font-bold text-slate-100">Case: {report._id}</p>
+                  <p className="text-sm text-slate-300">Status: {report.status}</p>
+                  <p className="text-sm text-slate-300">Patient: {report.patientSnapshot?.name || report.patientId?.name || '-'}</p>
+                  <p className="text-sm text-slate-300">Contact: {report.patientSnapshot?.contactNumber || report.patientId?.contactNumber || '-'}</p>
+                  <p className="text-sm text-slate-300">Hospital: {report.hospitalId?.name || '-'}</p>
+                  <p className="text-sm text-slate-300">Ambulance: {report.ambulanceId?.vehicleNumber || '-'} ({report.ambulanceId?.driverName || '-'})</p>
+                  <p className="text-sm text-slate-300">Doctor: {report.doctorId?.name || '-'}</p>
+                  <p className="text-sm text-slate-300">Address: {report.patientSnapshot?.address || '-'}</p>
+                  <p className="text-sm text-slate-300">Created: {report.createdAt ? new Date(report.createdAt).toLocaleString() : '-'}</p>
+                </article>
+              ))}
+            </div>
+
+            <div className="-mx-1 hidden overflow-x-auto rounded-xl border border-white/10 bg-white/5 sm:mx-0 lg:block">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-white/10 text-xs uppercase tracking-wider text-slate-300">
+                  <tr>
+                    <th className="px-4 py-3">Case ID</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Patient</th>
+                    <th className="px-4 py-3">Hospital</th>
+                    <th className="px-4 py-3">Ambulance/Driver</th>
+                    <th className="px-4 py-3">Doctor</th>
+                    <th className="px-4 py-3">Created</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                  {filteredEmergencyReports.map((report) => (
+                    <tr key={report._id} className="hover:bg-white/5">
+                      <td className="px-4 py-3 text-slate-100">{report._id}</td>
+                      <td className="px-4 py-3 text-slate-300">{report.status}</td>
+                      <td className="px-4 py-3 text-slate-300">
+                        <p>{report.patientSnapshot?.name || report.patientId?.name || '-'}</p>
+                        <p className="text-xs">{report.patientSnapshot?.contactNumber || report.patientId?.contactNumber || '-'}</p>
+                      </td>
+                      <td className="px-4 py-3 text-slate-300">{report.hospitalId?.name || '-'}</td>
+                      <td className="px-4 py-3 text-slate-300">
+                        <p>{report.ambulanceId?.vehicleNumber || '-'}</p>
+                        <p className="text-xs">{report.ambulanceId?.driverName || '-'} ({report.ambulanceId?.driverPhone || '-'})</p>
+                      </td>
+                      <td className="px-4 py-3 text-slate-300">{report.doctorId?.name || '-'}</td>
+                      <td className="px-4 py-3 text-slate-300">{report.createdAt ? new Date(report.createdAt).toLocaleString() : '-'}</td>
                     </tr>
                   ))}
                 </tbody>

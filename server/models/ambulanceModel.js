@@ -43,6 +43,17 @@ const ambulanceSchema = new Schema(
 			required: true,
 			trim: true,
 		},
+		driverEmail: {
+			type: String,
+			trim: true,
+			lowercase: true,
+			unique: true,
+			sparse: true,
+		},
+		password: {
+			type: String,
+			select: false,
+		},
 		driverBloodGroup: {
 			type: String,
 			enum: BLOOD_GROUPS,

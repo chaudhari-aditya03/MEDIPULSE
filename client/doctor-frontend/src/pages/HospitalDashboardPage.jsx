@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import TopNav from '../components/TopNav';
 import { apiFetch } from '../lib/api';
 import { getAuthSession } from '../lib/auth';
-import { getSmsHref, getTelHref, normalizeDialPhone } from '../lib/mobileActions';
+import { getSmsHref, getTelHref } from '../lib/mobileActions';
+import { requestBrowserLocation } from '../lib/geolocation';
+import { useSocket } from '../lib/useSocket';
+
+const BLOOD_GROUP_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 const doctorInitial = {
   name: '',
@@ -49,7 +53,14 @@ function HospitalDashboardPage() {
   const [doctorForm, setDoctorForm] = useState(doctorInitial);
   const [patientForm, setPatientForm] = useState(patientInitial);
   const [emergencyAlerts, setEmergencyAlerts] = useState([]);
-  const [notifyingAlertId, setNotifyingAlertId] = useState('');
+  const [statusUpdatingAlertId, setStatusUpdatingAlertId] = useState('');
+  const [removingAlertId, setRemovingAlertId] = useState('');
+  const [donorSearchGroup, setDonorSearchGroup] = useState('O+');
+  const [donorSearchRadius, setDonorSearchRadius] = useState('10000');
+  const [donorSearchLoading, setDonorSearchLoading] = useState(false);
+  const [donorSearchResults, setDonorSearchResults] = useState([]);
+  const [donorSearchError, setDonorSearchError] = useState('');
+  const { on } = useSocket();
 
   const loadDashboard = async () => {
     try {
@@ -64,18 +75,44 @@ function HospitalDashboardPage() {
     loadDashboard();
   }, [session?.token]);
 
-  useEffect(() => {
-    const loadEmergencyAlerts = async () => {
-      try {
-        const result = await apiFetch('/api/emergency/alerts/my?status=PENDING', { token: session?.token });
-        setEmergencyAlerts(Array.isArray(result) ? result : []);
-      } catch {
-        setEmergencyAlerts([]);
-      }
-    };
+  const loadEmergencyAlerts = async () => {
+    try {
+      const result = await apiFetch('/api/emergency/alerts/my?status=ALL', { token: session?.token });
+      setEmergencyAlerts(Array.isArray(result) ? result : []);
+    } catch {
+      setEmergencyAlerts([]);
+    }
+  };
 
+  useEffect(() => {
     loadEmergencyAlerts();
+
+    const intervalHandle = setInterval(() => {
+      loadEmergencyAlerts();
+    }, 10000);
+
+    return () => clearInterval(intervalHandle);
   }, [session?.token]);
+
+  useEffect(() => {
+    const offHospitalStatus = on?.('emergency:statusChangedHospital', () => {
+      loadEmergencyAlerts();
+    });
+
+    const offGlobalStatus = on?.('emergency:statusChanged', () => {
+      loadEmergencyAlerts();
+    });
+
+    const offNewAlert = on?.('emergency:newAlert', () => {
+      loadEmergencyAlerts();
+    });
+
+    return () => {
+      if (typeof offHospitalStatus === 'function') offHospitalStatus();
+      if (typeof offGlobalStatus === 'function') offGlobalStatus();
+      if (typeof offNewAlert === 'function') offNewAlert();
+    };
+  }, [on, session?.id]);
 
   const visitedPatients = useMemo(() => {
     if (!data?.appointments) return [];
@@ -254,21 +291,94 @@ function HospitalDashboardPage() {
     }
   };
 
-  const notifyAmbulanceDriver = async (alertId) => {
+  const updateEmergencyStatus = async (alertId, action) => {
     setError('');
     setMessage('');
-    setNotifyingAlertId(alertId);
+    setStatusUpdatingAlertId(alertId);
 
     try {
-      const result = await apiFetch(`/api/emergency/${alertId}/notify-driver`, {
+      const result = await apiFetch(`/api/emergency/${alertId}/${action}`, {
         method: 'POST',
         token: session?.token,
       });
-      setMessage(result?.message || 'Ambulance driver notified.');
+
+      setMessage(result?.message || 'Emergency status updated.');
+      await loadEmergencyAlerts();
     } catch (requestError) {
       setError(requestError.message);
     } finally {
-      setNotifyingAlertId('');
+      setStatusUpdatingAlertId('');
+    }
+  };
+
+  const removeCompletedAlert = async (alertId) => {
+    setError('');
+    setMessage('');
+    setRemovingAlertId(alertId);
+
+    try {
+      const result = await apiFetch(`/api/emergency/${alertId}`, {
+        method: 'DELETE',
+        token: session?.token,
+      });
+
+      setMessage(result?.message || 'Emergency alert removed.');
+      setEmergencyAlerts((prev) => prev.filter((item) => item._id !== alertId));
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setRemovingAlertId('');
+    }
+  };
+
+  const getEmergencyStatusMeta = (status) => {
+    if (status === 'ACCEPTED') {
+      return {
+        label: 'IN PROCESS',
+        className: 'border-amber-300/50 bg-amber-300/20 text-amber-100',
+      };
+    }
+
+    if (status === 'COMPLETED') {
+      return {
+        label: 'SUCCESSFULLY COMPLETED',
+        className: 'border-emerald-300/50 bg-emerald-300/20 text-emerald-100',
+      };
+    }
+
+    if (status === 'CANCELLED') {
+      return {
+        label: 'CANCELLED',
+        className: 'border-rose-300/50 bg-rose-300/20 text-rose-100',
+      };
+    }
+
+    return {
+      label: 'PENDING',
+      className: 'border-cyan-300/50 bg-cyan-300/20 text-cyan-100',
+    };
+  };
+
+  const searchNearbyBloodDonors = async () => {
+    setDonorSearchError('');
+    setDonorSearchLoading(true);
+
+    try {
+      const liveCoords = await requestBrowserLocation();
+      const lng = Number(liveCoords?.lng);
+      const lat = Number(liveCoords?.lat);
+
+      const result = await apiFetch(
+        `/api/donors/search?group=${encodeURIComponent(donorSearchGroup)}&lng=${encodeURIComponent(lng)}&lat=${encodeURIComponent(lat)}&radius=${encodeURIComponent(donorSearchRadius)}`,
+        { token: session?.token }
+      );
+
+      setDonorSearchResults(Array.isArray(result?.data) ? result.data : []);
+    } catch (requestError) {
+      setDonorSearchResults([]);
+      setDonorSearchError(requestError.message || 'Unable to search donors right now.');
+    } finally {
+      setDonorSearchLoading(false);
     }
   };
 
@@ -298,17 +408,22 @@ function HospitalDashboardPage() {
               </p>
 
               <div className="mt-5 rounded-2xl border border-rose-300/30 bg-rose-300/10 p-4">
-                <h2 className="text-lg font-black text-rose-100">Emergency Alerts</h2>
-                <p className="mt-1 text-xs text-rose-100/90">Incoming emergencies with patient details for immediate call-back and verification.</p>
+                <h2 className="text-lg font-black text-rose-100">Latest Emergency Alerts</h2>
+                <p className="mt-1 text-xs text-rose-100/90">Latest incidents with status and action controls.</p>
 
                 <div className="mt-3 space-y-2">
                   {emergencyAlerts.slice(0, 5).map((alert) => (
                     <article key={alert._id} className="rounded-xl border border-white/20 bg-white/10 p-3">
-                      <p className="text-sm font-bold text-white">{alert.patientSnapshot?.name || alert.patientId?.name || 'Patient'}</p>
+                      <div className="mb-1 flex items-start justify-between gap-2">
+                        <p className="text-sm font-bold text-white">{alert.patientSnapshot?.name || alert.patientId?.name || 'Patient'}</p>
+                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black ${getEmergencyStatusMeta(alert.status).className}`}>
+                          {getEmergencyStatusMeta(alert.status).label}
+                        </span>
+                      </div>
                       <p className="text-xs text-slate-200">Blood Group: {alert.patientSnapshot?.bloodGroup || alert.patientId?.bloodGroup || '-'}</p>
                       <p className="text-xs text-slate-200">Contact: {alert.patientSnapshot?.contactNumber || alert.patientId?.contactNumber || '-'}</p>
                       <p className="text-xs text-slate-200">Address: {alert.patientSnapshot?.address || alert.patientId?.address || '-'}</p>
-                      <p className="mt-1 text-xs text-slate-200">Ambulance: {alert.ambulanceId?.vehicleNumber || '-'} | Driver: {alert.ambulanceId?.driverName || '-'}</p>
+                      <p className="mt-1 text-xs text-slate-200">Ambulance: {alert.ambulanceId?.vehicleNumber || '-'}</p>
 
                       <div className="mt-3 flex flex-wrap gap-2">
                         {getTelHref(alert.patientSnapshot?.contactNumber || alert.patientId?.contactNumber) && (
@@ -335,39 +450,6 @@ function HospitalDashboardPage() {
                           </a>
                         )}
 
-                        {getTelHref(alert.ambulanceId?.driverPhone) && (
-                          <a
-                            href={getTelHref(alert.ambulanceId?.driverPhone)}
-                            className="rounded-lg border border-cyan-300/50 bg-cyan-300/20 px-2 py-1 text-[11px] font-bold text-cyan-100"
-                          >
-                            Missed Call Driver
-                          </a>
-                        )}
-
-                        {getSmsHref(
-                          alert.ambulanceId?.driverPhone,
-                          `Emergency dispatch from ${data?.hospital?.name || 'Hospital'} for patient ${alert.patientSnapshot?.name || alert.patientId?.name || ''}. Please move immediately.`
-                        ) && (
-                          <a
-                            href={getSmsHref(
-                              alert.ambulanceId?.driverPhone,
-                              `Emergency dispatch from ${data?.hospital?.name || 'Hospital'} for patient ${alert.patientSnapshot?.name || alert.patientId?.name || ''}. Please move immediately.`
-                            )}
-                            className="rounded-lg border border-indigo-300/50 bg-indigo-300/20 px-2 py-1 text-[11px] font-bold text-indigo-100"
-                          >
-                            SMS Driver
-                          </a>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => notifyAmbulanceDriver(alert._id)}
-                          disabled={notifyingAlertId === alert._id}
-                          className="rounded-lg border border-amber-300/50 bg-amber-300/20 px-2 py-1 text-[11px] font-bold text-amber-100 disabled:opacity-70"
-                        >
-                          {notifyingAlertId === alert._id ? 'Sending SMS...' : 'Send SMS To Driver'}
-                        </button>
-
                         {Array.isArray(alert?.location?.coordinates) && alert.location.coordinates.length === 2 && (
                           <a
                             href={`https://www.google.com/maps?q=${alert.location.coordinates[1]},${alert.location.coordinates[0]}`}
@@ -378,10 +460,97 @@ function HospitalDashboardPage() {
                             Track Incident
                           </a>
                         )}
+
+                        {alert.status === 'PENDING' && (
+                          <button
+                            type="button"
+                            onClick={() => updateEmergencyStatus(alert._id, 'accept')}
+                            disabled={statusUpdatingAlertId === alert._id}
+                            className="rounded-lg border border-amber-300/50 bg-amber-300/20 px-2 py-1 text-[11px] font-bold text-amber-100 disabled:opacity-70"
+                          >
+                            {statusUpdatingAlertId === alert._id ? 'Updating...' : 'Mark In Process'}
+                          </button>
+                        )}
+
+                        {alert.status === 'ACCEPTED' && (
+                          <button
+                            type="button"
+                            onClick={() => updateEmergencyStatus(alert._id, 'complete')}
+                            disabled={statusUpdatingAlertId === alert._id}
+                            className="rounded-lg border border-emerald-300/50 bg-emerald-300/20 px-2 py-1 text-[11px] font-bold text-emerald-100 disabled:opacity-70"
+                          >
+                            {statusUpdatingAlertId === alert._id ? 'Updating...' : 'Mark Completed'}
+                          </button>
+                        )}
+
+                        {(alert.status === 'COMPLETED' || alert.status === 'CANCELLED') && (
+                          <button
+                            type="button"
+                            onClick={() => removeCompletedAlert(alert._id)}
+                            disabled={removingAlertId === alert._id}
+                            className="rounded-lg border border-rose-300/50 bg-rose-300/20 px-2 py-1 text-[11px] font-bold text-rose-100 disabled:opacity-70"
+                          >
+                            {removingAlertId === alert._id ? 'Removing...' : 'Remove Alert'}
+                          </button>
+                        )}
                       </div>
                     </article>
                   ))}
-                  {emergencyAlerts.length === 0 && <p className="text-xs text-slate-200">No pending emergency alerts right now.</p>}
+                  {emergencyAlerts.length === 0 && <p className="text-xs text-slate-200">No latest emergency alerts right now.</p>}
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-red-300/30 bg-red-300/10 p-4">
+                <h2 className="text-lg font-black text-red-100">Emergency Blood Donor Search</h2>
+                <p className="mt-1 text-xs text-red-100/90">Find nearest matching blood-group donors around hospital live location.</p>
+
+                <div className="mt-3 grid gap-2 sm:grid-cols-4">
+                  <select
+                    value={donorSearchGroup}
+                    onChange={(event) => setDonorSearchGroup(event.target.value)}
+                    className="rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-xs"
+                  >
+                    {BLOOD_GROUP_OPTIONS.map((group) => (
+                      <option key={group} value={group}>{group}</option>
+                    ))}
+                  </select>
+                  <input
+                    value={donorSearchRadius}
+                    onChange={(event) => setDonorSearchRadius(event.target.value)}
+                    placeholder="Radius (meters)"
+                    className="rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={searchNearbyBloodDonors}
+                    disabled={donorSearchLoading}
+                    className="rounded-lg border border-red-300/50 bg-red-300/20 px-3 py-2 text-xs font-bold text-red-100 disabled:opacity-60"
+                  >
+                    {donorSearchLoading ? 'Searching...' : 'Search Nearby'}
+                  </button>
+                </div>
+
+                {donorSearchError && <p className="mt-2 text-xs text-coral">{donorSearchError}</p>}
+
+                <div className="mt-3 space-y-2">
+                  {donorSearchResults.slice(0, 12).map((item, index) => (
+                    <article key={`${item.role}-${item.phone}-${index}`} className="rounded-lg border border-white/15 bg-white/10 p-2">
+                      <p className="text-xs font-bold text-white">{item.name} <span className="text-slate-300">({item.role})</span></p>
+                      <p className="text-[11px] text-slate-200">Phone: {item.phone || '-'}</p>
+                      <p className="text-[11px] text-slate-200">Distance: {Number.isFinite(item.distanceInMeters) ? `${Math.round(item.distanceInMeters)} m` : 'N/A'}</p>
+                      {Array.isArray(item?.location?.coordinates) && item.location.coordinates.length === 2 && (
+                        <a
+                          href={`https://www.google.com/maps?q=${item.location.coordinates[1]},${item.location.coordinates[0]}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-1 inline-flex rounded-lg border border-fuchsia-300/50 bg-fuchsia-300/20 px-2 py-1 text-[10px] font-bold text-fuchsia-100"
+                        >
+                          Track Donor
+                        </a>
+                      )}
+                    </article>
+                  ))}
+                  {donorSearchResults.length === 0 && !donorSearchLoading && <p className="text-xs text-slate-200">No matching donors found in this radius.</p>}
                 </div>
               </div>
 

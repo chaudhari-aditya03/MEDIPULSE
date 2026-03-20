@@ -1,4 +1,4 @@
-import {registerPatientService, registerDoctorService, loginService} from '../services/authService.js';
+import {registerPatientService, registerDoctorService, registerDriverService, loginService} from '../services/authService.js';
 
 const loginController = async (req, res) => {
     const { email, password , role} = req.body;
@@ -7,7 +7,7 @@ const loginController = async (req, res) => {
         return res.status(400).json({ error: "Email and password are required" });
     }
 
-    if (role && !["admin", "doctor", "patient", "hospital"].includes(String(role).toLowerCase())) {
+    if (role && !["admin", "doctor", "patient", "hospital", "driver"].includes(String(role).toLowerCase())) {
         return res.status(400).json({ error: "Invalid role" });
     }
 
@@ -33,6 +33,11 @@ const registerController = async (req, res) => {
 
         if (role === "doctor") {
             const result = await registerDoctorService(req.body);
+            return res.status(201).json(result);
+        }
+
+        if (role === "driver") {
+            const result = await registerDriverService(req.body);
             return res.status(201).json(result);
         }
 

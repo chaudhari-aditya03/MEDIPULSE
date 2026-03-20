@@ -81,6 +81,18 @@ const emergencyRequestSchema = new Schema(
 			default: "PENDING",
 			index: true,
 		},
+		hiddenForPatient: {
+			type: Boolean,
+			default: false,
+		},
+		hiddenForHospital: {
+			type: Boolean,
+			default: false,
+		},
+		hiddenForDriver: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	{
 		timestamps: true,

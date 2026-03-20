@@ -10,6 +10,7 @@ import PatientDashboardPage from './pages/PatientDashboardPage';
 import PatientProfilePage from './pages/PatientProfilePage';
 import HospitalDashboardPage from './pages/HospitalDashboardPage';
 import AmbulanceModulePage from './pages/AmbulanceModulePage';
+import AmbulanceDriverDashboardPage from './pages/AmbulanceDriverDashboardPage';
 import NotFoundPage from './pages/NotFoundPage';
 import { getAuthSession } from './lib/auth';
 import { getDefaultRouteByRole } from './lib/api';
@@ -28,6 +29,14 @@ function App() {
         element={
           <ProtectedRoute allowedRoles={['hospital']}>
             <AmbulanceModulePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ambulance/driver/dashboard"
+        element={
+          <ProtectedRoute allowedRoles={['driver']}>
+            <AmbulanceDriverDashboardPage />
           </ProtectedRoute>
         }
       />

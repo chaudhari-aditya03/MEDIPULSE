@@ -9,16 +9,22 @@ import {
 	getEmergencySupportController,
 	triggerEmergencyAlertController,
 	getMyEmergencyAlertsController,
+	getMyLatestEmergencyController,
 	getEmergencyAlertByIdController,
 	notifyAmbulanceDriverController,
+	removeEmergencyAlertController,
+	hideEmergencyForDriverController,
 } from "../controllers/emergencyController.js";
 
 const emergencyRouter = Router();
 
 emergencyRouter.get("/support", requireRoles("patient", "admin", "hospital"), getEmergencySupportController);
-emergencyRouter.get("/alerts/my", requireRoles("patient", "admin", "hospital", "doctor"), getMyEmergencyAlertsController);
-emergencyRouter.get("/:id/details", requireRoles("patient", "admin", "hospital", "doctor"), getEmergencyAlertByIdController);
+emergencyRouter.get("/alerts/my", requireRoles("patient", "admin", "hospital", "doctor", "driver"), getMyEmergencyAlertsController);
+emergencyRouter.get("/my/latest", requireRoles("patient"), getMyLatestEmergencyController);
+emergencyRouter.get("/:id/details", requireRoles("patient", "admin", "hospital", "doctor", "driver"), getEmergencyAlertByIdController);
 emergencyRouter.post("/:id/notify-driver", requireRoles("hospital", "admin"), notifyAmbulanceDriverController);
+emergencyRouter.delete("/:id", requireRoles("hospital", "admin"), removeEmergencyAlertController);
+emergencyRouter.post("/:id/hide-for-driver", requireRoles("driver", "admin"), hideEmergencyForDriverController);
 emergencyRouter.post("/trigger", requireRoles("patient", "admin"), triggerEmergencyAlertController);
 emergencyRouter.post("/", requireRoles("patient", "admin"), createEmergencyController);
 emergencyRouter.post("/:emergencyId/assign", requireRoles("admin", "hospital"), assignEmergencyController);

@@ -38,6 +38,7 @@ const getDefaultRouteByRole = (role) => {
   if (role === 'doctor') return '/doctor/dashboard';
   if (role === 'patient') return '/patient/dashboard';
   if (role === 'hospital') return '/hospital/dashboard';
+  if (role === 'driver') return '/ambulance/driver/dashboard';
   return '/';
 };
 

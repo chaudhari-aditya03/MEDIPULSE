@@ -23,12 +23,18 @@ function AdminShell({ children }) {
   return (
     <div className="min-h-screen bg-slatex text-slate-100">
       <div className="mx-auto flex min-h-screen max-w-[1600px]">
-        <aside className="hidden w-72 shrink-0 border-r border-white/10 bg-[#0e1628] p-6 lg:block">
+        <aside className="hidden w-72 shrink-0 border-r border-white/10 bg-[#0c162d]/95 p-6 lg:block">
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-mint">Doctor System</p>
           <h1 className="mt-2 text-2xl font-black">Admin Command</h1>
+          <p className="mt-1 text-xs text-slate-400">Central governance for hospitals, fleets, donors, and emergency workflows.</p>
           <nav className="mt-8 space-y-2">
-            <NavLink to="/dashboard" className="block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-white/10">
-              Overview
+            <NavLink
+              to="/dashboard"
+              className={({ isActive }) =>
+                `block rounded-xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'border border-mint/50 bg-mint/15 text-mint' : 'border border-transparent hover:border-white/15 hover:bg-white/10'}`
+              }
+            >
+              Dashboard Overview
             </NavLink>
           </nav>
           <button onClick={logout} className="mt-8 rounded-xl border border-white/20 px-4 py-2 text-sm font-bold text-slate-200 transition hover:border-white/40">
@@ -39,18 +45,21 @@ function AdminShell({ children }) {
         {mobileMenuOpen && (
           <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setMobileMenuOpen(false)}>
             <aside
-              className="h-full w-64 border-r border-white/10 bg-[#0e1628] p-5"
+              className="h-full w-64 border-r border-white/10 bg-[#0c162d]/95 p-5"
               onClick={(event) => event.stopPropagation()}
             >
               <p className="text-xs font-bold uppercase tracking-[0.25em] text-mint">Doctor System</p>
               <h1 className="mt-2 text-xl font-black">Admin Command</h1>
+              <p className="mt-1 text-xs text-slate-400">Central governance panel.</p>
               <nav className="mt-6 space-y-2">
                 <NavLink
                   to="/dashboard"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-white/10"
+                  className={({ isActive }) =>
+                    `block rounded-xl px-4 py-3 text-sm font-semibold transition ${isActive ? 'border border-mint/50 bg-mint/15 text-mint' : 'border border-transparent hover:border-white/15 hover:bg-white/10'}`
+                  }
                 >
-                  Overview
+                  Dashboard Overview
                 </NavLink>
               </nav>
               <button onClick={logout} className="mt-6 rounded-xl border border-white/20 px-4 py-2 text-sm font-bold text-slate-200 transition hover:border-white/40">
@@ -61,7 +70,7 @@ function AdminShell({ children }) {
         )}
 
         <div className="flex-1">
-          <header className="sticky top-0 z-30 border-b border-white/10 bg-slatex/80 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
+          <header className="sticky top-0 z-30 border-b border-white/10 bg-[#091126]/85 px-4 py-3 backdrop-blur-xl sm:px-6 sm:py-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Enterprise Panel</p>

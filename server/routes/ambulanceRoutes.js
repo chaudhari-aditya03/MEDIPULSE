@@ -5,6 +5,7 @@ import {
 	getAllAmbulancesController,
 	getPublicAmbulancesController,
 	getAmbulanceByIdController,
+	getMyAmbulanceProfileController,
 	updateAmbulanceController,
 	deleteAmbulanceController,
 	updateAmbulanceLocationController,
@@ -18,6 +19,7 @@ ambulanceRouter.get("/public", getPublicAmbulancesController);
 ambulanceRouter.post("/", requireRoles("admin", "hospital"), createAmbulanceController);
 ambulanceRouter.get("/", requireRoles("admin", "hospital"), getAllAmbulancesController);
 ambulanceRouter.get("/nearby", requireRoles("admin", "hospital", "patient"), getNearbyAmbulancesController);
+ambulanceRouter.get("/me", requireRoles("driver"), getMyAmbulanceProfileController);
 ambulanceRouter.get("/:id", requireRoles("admin", "hospital"), getAmbulanceByIdController);
 ambulanceRouter.put("/:id", requireRoles("admin", "hospital"), updateAmbulanceController);
 ambulanceRouter.delete("/:id", requireRoles("admin", "hospital"), deleteAmbulanceController);

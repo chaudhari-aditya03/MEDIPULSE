@@ -5,6 +5,7 @@ import TopNav from '../components/TopNav';
 import { apiFetch } from '../lib/api';
 import { getAuthSession } from '../lib/auth';
 import { requestBrowserLocation, reverseGeocodeCoordinates } from '../lib/geolocation';
+import { useSocket } from '../lib/useSocket';
 
 const statusStyles = {
   scheduled: 'border-amber-300/40 bg-amber-300/10 text-amber-200',
@@ -17,6 +18,8 @@ const statusLabel = {
   completed: 'Fulfilled',
   cancelled: 'Rejected/Cancelled',
 };
+
+const BLOOD_GROUP_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 const formatActiveHours = (doctor) => {
   const start = doctor?.activeHours?.start || '09:00';
@@ -180,14 +183,28 @@ function PatientDashboardPage() {
   const [appointmentMessage, setAppointmentMessage] = useState('');
   const [error, setError] = useState('');
   const [supportInfo, setSupportInfo] = useState({ nearestHospital: null, nearestAmbulance: null, nearestDoctor: null });
+  const [latestEmergency, setLatestEmergency] = useState(null);
   const [currentPlaceName, setCurrentPlaceName] = useState('');
   const [emergencyLoading, setEmergencyLoading] = useState(false);
+  const [donorSearchGroup, setDonorSearchGroup] = useState('O+');
+  const [donorSearchRadius, setDonorSearchRadius] = useState('10000');
+  const [donorSearchLoading, setDonorSearchLoading] = useState(false);
+  const [donorSearchResults, setDonorSearchResults] = useState([]);
+  const [donorSearchError, setDonorSearchError] = useState('');
   const [hospitalOptions, setHospitalOptions] = useState([]);
   const [doctorOptions, setDoctorOptions] = useState([]);
   const [createForm, setCreateForm] = useState({ hospitalId: '', doctorId: '', appointmentDate: '', appointmentTime: '' });
   const [editingAppointmentId, setEditingAppointmentId] = useState('');
   const [editDoctorOptions, setEditDoctorOptions] = useState([]);
   const [editForm, setEditForm] = useState({ hospitalId: '', doctorId: '', appointmentDate: '', appointmentTime: '' });
+  const { on } = useSocket();
+
+  const emergencyStatusMeta = {
+    PENDING: { label: 'PENDING', className: 'border-cyan-300/40 bg-cyan-300/10 text-cyan-200' },
+    ACCEPTED: { label: 'IN PROCESS', className: 'border-amber-300/40 bg-amber-300/10 text-amber-200' },
+    COMPLETED: { label: 'SUCCESSFULLY COMPLETED', className: 'border-emerald-300/40 bg-emerald-300/10 text-emerald-200' },
+    CANCELLED: { label: 'CANCELLED', className: 'border-rose-300/40 bg-rose-300/10 text-rose-200' },
+  };
 
   const loadMyAppointments = async () => {
     const result = await apiFetch('/appointments/my', { token: session.token });
@@ -197,6 +214,40 @@ function PatientDashboardPage() {
   useEffect(() => {
     loadMyAppointments().catch((requestError) => setError(requestError.message));
   }, []);
+
+  const loadLatestEmergency = async () => {
+    try {
+      const result = await apiFetch('/api/emergency/my/latest', { token: session.token });
+      setLatestEmergency(result || null);
+    } catch {
+      setLatestEmergency(null);
+    }
+  };
+
+  useEffect(() => {
+    loadLatestEmergency();
+
+    const intervalHandle = setInterval(() => {
+      loadLatestEmergency();
+    }, 10000);
+
+    return () => clearInterval(intervalHandle);
+  }, [session.token]);
+
+  useEffect(() => {
+    const offPatientStatus = on?.('emergency:statusChangedPatient', () => {
+      loadLatestEmergency();
+    });
+
+    const offPatientAlert = on?.('emergency:newAlert', () => {
+      loadLatestEmergency();
+    });
+
+    return () => {
+      if (typeof offPatientStatus === 'function') offPatientStatus();
+      if (typeof offPatientAlert === 'function') offPatientAlert();
+    };
+  }, [on, session.id]);
 
   useEffect(() => {
     const loadNearbySupport = async () => {
@@ -442,28 +493,31 @@ function PatientDashboardPage() {
     setEmergencyLoading(true);
 
     try {
-      let lng = null;
-      let lat = null;
+      const liveCoords = await requestBrowserLocation();
+      const lng = Number(liveCoords?.lng);
+      const lat = Number(liveCoords?.lat);
 
+      if (!Number.isFinite(lng) || !Number.isFinite(lat)) {
+        throw new Error('Unable to detect live location. Please enable location access and try again.');
+      }
+
+      let liveAddress = '';
       try {
-        const patient = await apiFetch(`/patients/${session.id}`, { token: session.token });
-        lng = patient?.geoLocation?.coordinates?.[0];
-        lat = patient?.geoLocation?.coordinates?.[1];
+        const place = await reverseGeocodeCoordinates(lng, lat);
+        liveAddress = String(place || '').trim();
       } catch {
-        lng = null;
-        lat = null;
+        liveAddress = '';
       }
 
-      if (!Number.isFinite(Number(lng)) || !Number.isFinite(Number(lat))) {
-        throw new Error('Update your profile latitude/longitude before triggering emergency.');
-      }
+      setCurrentPlaceName(liveAddress || `${lat}, ${lng}`);
 
       const result = await apiFetch('/api/emergency/trigger', {
         method: 'POST',
         token: session.token,
         body: {
-          lng: Number(lng),
-          lat: Number(lat),
+          lng,
+          lat,
+          liveAddress,
         },
       });
 
@@ -473,11 +527,55 @@ function PatientDashboardPage() {
         nearestDoctor: result?.support?.nearestDoctor || prev.nearestDoctor,
       }));
 
-      setAppointmentMessage('Emergency alert sent. Nearest hospital, ambulance, and doctor have been notified.');
+      await loadLatestEmergency();
+
+      setAppointmentMessage('Emergency alert sent with your live location. Nearest hospital, ambulance, and doctor have been notified.');
     } catch (requestError) {
       setError(requestError.message);
     } finally {
       setEmergencyLoading(false);
+    }
+  };
+
+  const cancelLatestEmergency = async () => {
+    if (!latestEmergency?._id) return;
+
+    setError('');
+    setAppointmentMessage('');
+
+    try {
+      await apiFetch(`/api/emergency/${latestEmergency._id}/cancel`, {
+        method: 'POST',
+        token: session.token,
+      });
+
+      await loadLatestEmergency();
+      setAppointmentMessage('Emergency request cancelled successfully. Hospital and ambulance have been updated.');
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  };
+
+  const searchNearbyBloodDonors = async () => {
+    setDonorSearchError('');
+    setDonorSearchLoading(true);
+
+    try {
+      const liveCoords = await requestBrowserLocation();
+      const lng = Number(liveCoords?.lng);
+      const lat = Number(liveCoords?.lat);
+
+      const result = await apiFetch(
+        `/api/donors/search?group=${encodeURIComponent(donorSearchGroup)}&lng=${encodeURIComponent(lng)}&lat=${encodeURIComponent(lat)}&radius=${encodeURIComponent(donorSearchRadius)}`,
+        { token: session.token }
+      );
+
+      setDonorSearchResults(Array.isArray(result?.data) ? result.data : []);
+    } catch (requestError) {
+      setDonorSearchResults([]);
+      setDonorSearchError(requestError.message || 'Unable to search donors right now.');
+    } finally {
+      setDonorSearchLoading(false);
     }
   };
 
@@ -537,6 +635,44 @@ function PatientDashboardPage() {
                 <p className="text-xs font-bold uppercase tracking-wider text-cyan-100">Your Current Place</p>
                 <p className="mt-2 font-semibold text-white">{currentPlaceName || 'Detecting place from your location...'}</p>
               </article>
+
+              <article className="rounded-2xl border border-white/20 bg-white/10 p-4 md:col-span-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-200">My Latest Emergency</p>
+                    <p className="mt-1 text-sm text-slate-200">
+                      {latestEmergency ? `ID: ${latestEmergency._id}` : 'No emergency raised yet.'}
+                    </p>
+                  </div>
+                  {latestEmergency?.status && (
+                    <span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${(emergencyStatusMeta[latestEmergency.status] || emergencyStatusMeta.PENDING).className}`}>
+                      {(emergencyStatusMeta[latestEmergency.status] || emergencyStatusMeta.PENDING).label}
+                    </span>
+                  )}
+                </div>
+
+                {latestEmergency && (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <p className="text-xs text-slate-200">Assigned Hospital: {latestEmergency.hospitalId?.name || 'Pending assignment'}</p>
+                    <p className="text-xs text-slate-200">Assigned Ambulance: {latestEmergency.ambulanceId?.vehicleNumber || 'Pending assignment'}</p>
+                    <p className="text-xs text-slate-200">Driver: {latestEmergency.ambulanceId?.driverName || 'Pending assignment'}</p>
+                    <p className="text-xs text-slate-200">Driver Phone: {latestEmergency.ambulanceId?.driverPhone || '-'}</p>
+                  </div>
+                )}
+
+                {latestEmergency && ['PENDING', 'ACCEPTED'].includes(String(latestEmergency.status || '').toUpperCase()) && (
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={cancelLatestEmergency}
+                      className="rounded-lg border border-rose-300/50 bg-rose-300/20 px-3 py-2 text-xs font-bold text-rose-100 transition hover:bg-rose-300/30"
+                    >
+                      Cancel Emergency Request
+                    </button>
+                  </div>
+                )}
+              </article>
+
               <article className="rounded-2xl border border-white/20 bg-white/10 p-4">
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-200">Nearest Hospital</p>
                 <p className="mt-2 font-bold text-white">{supportInfo.nearestHospital?.name || 'Unavailable'}</p>
@@ -552,6 +688,60 @@ function PatientDashboardPage() {
                 <p className="mt-2 font-bold text-white">{supportInfo.nearestDoctor?.name || 'Unavailable'}</p>
                 <p className="text-xs text-slate-200">{supportInfo.nearestDoctor?.specialization || '-'}</p>
               </article>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-red-300/30 bg-red-300/10 p-4">
+              <h3 className="text-lg font-black text-red-100">Need Blood? Search Nearby Donors</h3>
+              <p className="mt-1 text-xs text-red-100/90">Search matching blood-group donors near your live location.</p>
+
+              <div className="mt-3 grid gap-2 sm:grid-cols-4">
+                <select
+                  value={donorSearchGroup}
+                  onChange={(event) => setDonorSearchGroup(event.target.value)}
+                  className="rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-xs"
+                >
+                  {BLOOD_GROUP_OPTIONS.map((group) => (
+                    <option key={group} value={group}>{group}</option>
+                  ))}
+                </select>
+                <input
+                  value={donorSearchRadius}
+                  onChange={(event) => setDonorSearchRadius(event.target.value)}
+                  placeholder="Radius (meters)"
+                  className="rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={searchNearbyBloodDonors}
+                  disabled={donorSearchLoading}
+                  className="rounded-lg border border-red-300/50 bg-red-300/20 px-3 py-2 text-xs font-bold text-red-100 disabled:opacity-60"
+                >
+                  {donorSearchLoading ? 'Searching...' : 'Search Nearby'}
+                </button>
+              </div>
+
+              {donorSearchError && <p className="mt-2 text-xs text-coral">{donorSearchError}</p>}
+
+              <div className="mt-3 space-y-2">
+                {donorSearchResults.slice(0, 12).map((item, index) => (
+                  <article key={`${item.role}-${item.phone}-${index}`} className="rounded-lg border border-white/15 bg-white/10 p-2">
+                    <p className="text-xs font-bold text-white">{item.name} <span className="text-slate-300">({item.role})</span></p>
+                    <p className="text-[11px] text-slate-200">Phone: {item.phone || '-'}</p>
+                    <p className="text-[11px] text-slate-200">Distance: {Number.isFinite(item.distanceInMeters) ? `${Math.round(item.distanceInMeters)} m` : 'N/A'}</p>
+                    {Array.isArray(item?.location?.coordinates) && item.location.coordinates.length === 2 && (
+                      <a
+                        href={`https://www.google.com/maps?q=${item.location.coordinates[1]},${item.location.coordinates[0]}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-1 inline-flex rounded-lg border border-fuchsia-300/50 bg-fuchsia-300/20 px-2 py-1 text-[10px] font-bold text-fuchsia-100"
+                      >
+                        Track Donor
+                      </a>
+                    )}
+                  </article>
+                ))}
+                {donorSearchResults.length === 0 && !donorSearchLoading && <p className="text-xs text-slate-200">No matching donors found in this radius.</p>}
+              </div>
             </div>
           </div>
 

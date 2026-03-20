@@ -13,6 +13,9 @@ import hospitalRouter from './routes/hospitalRouter.js';
 import visitorCounterRouter from './routes/visitorCounterRouter.js';
 import ambulanceRouter from './routes/ambulanceRoutes.js';
 import emergencyRouter from './routes/emergencyRouter.js';
+import bloodBankRouter from './routes/bloodBankRoutes.js';
+import bloodRequestRouter from './routes/bloodRequestRoutes.js';
+import donorRouter from './routes/donorRoutes.js';
 import dbConnect from './utils/dbConnect.js';
 
 const currentFilePath = fileURLToPath(import.meta.url);
@@ -61,6 +64,9 @@ app.use('/hospitals', hospitalRouter);
 app.use('/visitor-counter', visitorCounterRouter);
 app.use('/api/ambulances', ambulanceRouter);
 app.use('/api/emergency', emergencyRouter);
+app.use('/api/bloodbanks', bloodBankRouter);
+app.use('/api/blood-requests', bloodRequestRouter);
+app.use('/api/donors', donorRouter);
 
 // ===== SOCKET.IO EVENT HANDLERS =====
 const connectedUsers = new Map(); // { userId: { socketId, role, rooms } }
@@ -80,8 +86,11 @@ io.on('connection', (socket) => {
     // Join rooms for real-time updates
     if (appointmentId) socket.join(`appointment:${appointmentId}`);
     if (doctorId) socket.join(`doctor:${doctorId}`);
+    if (role === 'patient' && userId) socket.join(`patient:${userId}`);
     if (role === 'doctor' && userId) socket.join(`doctor:${userId}`);
     if (role === 'hospital' && userId) socket.join(`hospital:${userId}`);
+    if (role === 'driver' && userId) socket.join(`ambulance:${userId}`);
+    if (role === 'hospital') socket.join('hospitals:blood');
     if (role === 'doctor') socket.join(`doctors:availability`);
     if (role === 'admin') socket.join(`admin:notifications`);
 

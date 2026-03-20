@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom';
 import TopNav from '../components/TopNav';
 import { apiFetch } from '../lib/api';
 import { getAuthSession } from '../lib/auth';
+import { requestBrowserLocation } from '../lib/geolocation';
+
+const BLOOD_GROUP_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 const statusStyles = {
   scheduled: 'border-amber-300/40 bg-amber-300/10 text-amber-200',
@@ -50,6 +53,11 @@ function DoctorDashboardPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [activeSection, setActiveSection] = useState('appointments');
   const [emergencyAlerts, setEmergencyAlerts] = useState([]);
+  const [donorSearchGroup, setDonorSearchGroup] = useState('O+');
+  const [donorSearchRadius, setDonorSearchRadius] = useState('10000');
+  const [donorSearchLoading, setDonorSearchLoading] = useState(false);
+  const [donorSearchResults, setDonorSearchResults] = useState([]);
+  const [donorSearchError, setDonorSearchError] = useState('');
 
   const loadAppointments = async () => {
     const result = await apiFetch('/appointments/my', { token: session.token });
@@ -299,6 +307,29 @@ function DoctorDashboardPage() {
       prescriptionByAppointment[appointment._id] ?? appointment.medicalPrescription ?? appointment.medicineDescription ?? '',
   });
 
+  const searchNearbyBloodDonors = async () => {
+    setDonorSearchError('');
+    setDonorSearchLoading(true);
+
+    try {
+      const liveCoords = await requestBrowserLocation();
+      const lng = Number(liveCoords?.lng);
+      const lat = Number(liveCoords?.lat);
+
+      const result = await apiFetch(
+        `/api/donors/search?group=${encodeURIComponent(donorSearchGroup)}&lng=${encodeURIComponent(lng)}&lat=${encodeURIComponent(lat)}&radius=${encodeURIComponent(donorSearchRadius)}`,
+        { token: session.token }
+      );
+
+      setDonorSearchResults(Array.isArray(result?.data) ? result.data : []);
+    } catch (requestError) {
+      setDonorSearchResults([]);
+      setDonorSearchError(requestError.message || 'Unable to search donors right now.');
+    } finally {
+      setDonorSearchLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-ink text-white">
       <TopNav />
@@ -345,9 +376,73 @@ function DoctorDashboardPage() {
                   <p className="text-xs text-slate-200">Blood Group: {alert.patientSnapshot?.bloodGroup || alert.patientId?.bloodGroup || '-'}</p>
                   <p className="text-xs text-slate-200">Contact: {alert.patientSnapshot?.contactNumber || alert.patientId?.contactNumber || '-'}</p>
                   <p className="text-xs text-slate-200">Address: {alert.patientSnapshot?.address || alert.patientId?.address || '-'}</p>
+                  {Array.isArray(alert?.location?.coordinates) && alert.location.coordinates.length === 2 && (
+                    <a
+                      href={`https://www.google.com/maps?q=${alert.location.coordinates[1]},${alert.location.coordinates[0]}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex rounded-lg border border-fuchsia-300/50 bg-fuchsia-300/20 px-2 py-1 text-[11px] font-bold text-fuchsia-100"
+                    >
+                      Track Incident
+                    </a>
+                  )}
                 </article>
               ))}
               {emergencyAlerts.length === 0 && <p className="text-xs text-slate-200">No pending emergency alerts right now.</p>}
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-2xl border border-red-300/30 bg-red-300/10 p-4">
+            <h2 className="text-lg font-black text-red-100">Emergency Blood Donor Search</h2>
+            <p className="mt-1 text-xs text-red-100/90">Find nearest matching blood-group donors around your live location.</p>
+
+            <div className="mt-3 grid gap-2 sm:grid-cols-4">
+              <select
+                value={donorSearchGroup}
+                onChange={(event) => setDonorSearchGroup(event.target.value)}
+                className="rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-xs"
+              >
+                {BLOOD_GROUP_OPTIONS.map((group) => (
+                  <option key={group} value={group}>{group}</option>
+                ))}
+              </select>
+              <input
+                value={donorSearchRadius}
+                onChange={(event) => setDonorSearchRadius(event.target.value)}
+                placeholder="Radius (meters)"
+                className="rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-xs"
+              />
+              <button
+                type="button"
+                onClick={searchNearbyBloodDonors}
+                disabled={donorSearchLoading}
+                className="rounded-lg border border-red-300/50 bg-red-300/20 px-3 py-2 text-xs font-bold text-red-100 disabled:opacity-60"
+              >
+                {donorSearchLoading ? 'Searching...' : 'Search Nearby'}
+              </button>
+            </div>
+
+            {donorSearchError && <p className="mt-2 text-xs text-coral">{donorSearchError}</p>}
+
+            <div className="mt-3 space-y-2">
+              {donorSearchResults.slice(0, 12).map((item, index) => (
+                <article key={`${item.role}-${item.phone}-${index}`} className="rounded-lg border border-white/15 bg-white/10 p-2">
+                  <p className="text-xs font-bold text-white">{item.name} <span className="text-slate-300">({item.role})</span></p>
+                  <p className="text-[11px] text-slate-200">Phone: {item.phone || '-'}</p>
+                  <p className="text-[11px] text-slate-200">Distance: {Number.isFinite(item.distanceInMeters) ? `${Math.round(item.distanceInMeters)} m` : 'N/A'}</p>
+                  {Array.isArray(item?.location?.coordinates) && item.location.coordinates.length === 2 && (
+                    <a
+                      href={`https://www.google.com/maps?q=${item.location.coordinates[1]},${item.location.coordinates[0]}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1 inline-flex rounded-lg border border-fuchsia-300/50 bg-fuchsia-300/20 px-2 py-1 text-[10px] font-bold text-fuchsia-100"
+                    >
+                      Track Donor
+                    </a>
+                  )}
+                </article>
+              ))}
+              {donorSearchResults.length === 0 && !donorSearchLoading && <p className="text-xs text-slate-200">No matching donors found in this radius.</p>}
             </div>
           </div>
         </section>
