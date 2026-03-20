@@ -13,10 +13,14 @@ import {
 
 export const registerHospitalController = async (req, res) => {
   try {
-    const { name, email, password, phone, address, website, licenseNumber, licenseExpiry, description, beds, departments } = req.body;
+    const { name, email, password, phone, address, website, licenseNumber, licenseExpiry, description, beds, departments, lng, lat } = req.body;
 
     if (!name || !email || !password || !phone || !licenseNumber) {
       return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    if (!Number.isFinite(Number(lng)) || !Number.isFinite(Number(lat))) {
+      return res.status(400).json({ error: 'Hospital location must include valid lng and lat' });
     }
 
     const hospital = await createHospitalService({
@@ -31,6 +35,8 @@ export const registerHospitalController = async (req, res) => {
       description,
       beds,
       departments,
+      lng,
+      lat,
       status: 'pending',
       role: 'hospital',
     });

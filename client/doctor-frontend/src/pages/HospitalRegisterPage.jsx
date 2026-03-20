@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TopNav from '../components/TopNav';
 import { apiFetch } from '../lib/api';
+import { requestBrowserLocation } from '../lib/geolocation';
 
 const initialForm = {
   name: '',
@@ -12,11 +13,15 @@ const initialForm = {
   licenseNumber: '',
   beds: '',
   departments: '',
+  building: '',
+  lane: '',
   street: '',
   city: '',
   state: '',
   zipCode: '',
   country: '',
+  lng: '',
+  lat: '',
   description: '',
 };
 
@@ -26,11 +31,37 @@ function HospitalRegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [locating, setLocating] = useState(false);
+  const [locationMessage, setLocationMessage] = useState('');
+
+  const fillLocationFromBrowser = async () => {
+    setLocating(true);
+    setLocationMessage('Requesting location permission...');
+
+    try {
+      const coords = await requestBrowserLocation();
+      setForm((prev) => ({
+        ...prev,
+        lng: coords.lng,
+        lat: coords.lat,
+      }));
+      setLocationMessage('Location auto-filled from your browser.');
+    } catch (requestError) {
+      setLocationMessage(requestError.message);
+    } finally {
+      setLocating(false);
+    }
+  };
 
   const onChange = (event) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
+
+  useEffect(() => {
+    fillLocationFromBrowser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onSubmit = async (event) => {
     event.preventDefault();
@@ -55,12 +86,16 @@ function HospitalRegisterPage() {
             .filter(Boolean),
           description: form.description,
           address: {
+            building: form.building,
+            lane: form.lane,
             street: form.street,
             city: form.city,
             state: form.state,
             zipCode: form.zipCode,
             country: form.country,
           },
+          lng: Number(form.lng),
+          lat: Number(form.lat),
         },
       });
 
@@ -93,11 +128,30 @@ function HospitalRegisterPage() {
             <input name="website" value={form.website} onChange={onChange} placeholder="Website" className="rounded-xl border border-white/20 bg-white/10 px-4 py-3" />
             <input name="beds" type="number" value={form.beds} onChange={onChange} placeholder="Number of Beds" className="rounded-xl border border-white/20 bg-white/10 px-4 py-3" />
             <input name="departments" value={form.departments} onChange={onChange} placeholder="Departments (comma separated)" className="rounded-xl border border-white/20 bg-white/10 px-4 py-3" />
+            <input name="building" value={form.building} onChange={onChange} placeholder="Building / House No." className="rounded-xl border border-white/20 bg-white/10 px-4 py-3" required />
+            <input name="lane" value={form.lane} onChange={onChange} placeholder="Lane / Area" className="rounded-xl border border-white/20 bg-white/10 px-4 py-3" required />
             <input name="street" value={form.street} onChange={onChange} placeholder="Street" className="rounded-xl border border-white/20 bg-white/10 px-4 py-3" />
             <input name="city" value={form.city} onChange={onChange} placeholder="City" className="rounded-xl border border-white/20 bg-white/10 px-4 py-3" />
             <input name="state" value={form.state} onChange={onChange} placeholder="State" className="rounded-xl border border-white/20 bg-white/10 px-4 py-3" />
             <input name="zipCode" value={form.zipCode} onChange={onChange} placeholder="Zip Code" className="rounded-xl border border-white/20 bg-white/10 px-4 py-3" />
             <input name="country" value={form.country} onChange={onChange} placeholder="Country" className="rounded-xl border border-white/20 bg-white/10 px-4 py-3" />
+            <input name="lng" value={form.lng} onChange={onChange} placeholder="Longitude" required className="rounded-xl border border-white/20 bg-white/10 px-4 py-3" />
+            <input name="lat" value={form.lat} onChange={onChange} placeholder="Latitude" required className="rounded-xl border border-white/20 bg-white/10 px-4 py-3" />
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs text-slate-300">Allow browser location once and latitude/longitude will auto-fill here.</p>
+              <button
+                type="button"
+                onClick={fillLocationFromBrowser}
+                disabled={locating}
+                className="rounded-lg border border-white/20 px-3 py-2 text-xs font-bold text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {locating ? 'Fetching location...' : 'Use Current Location'}
+              </button>
+            </div>
+            {locationMessage && <p className="mt-2 text-xs text-cyan-200">{locationMessage}</p>}
           </div>
 
           <textarea

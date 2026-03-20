@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TopNav from '../components/TopNav';
 import { apiFetch } from '../lib/api';
+import { requestBrowserLocation } from '../lib/geolocation';
 
 const patientInitial = {
   role: 'patient',
@@ -9,8 +10,13 @@ const patientInitial = {
   email: '',
   age: '',
   contactNumber: '',
+  bloodGroup: '',
   password: '',
   address: '',
+  buildingAddress: '',
+  laneAddress: '',
+  lng: '',
+  lat: '',
 };
 
 const doctorInitial = {
@@ -19,12 +25,17 @@ const doctorInitial = {
   email: '',
   age: '',
   contactNumber: '',
+  bloodGroup: '',
   password: '',
   specialization: '',
   experience: '',
   hospitalId: '',
   licenseNumber: '',
-  address: '',
+  homeAddress: '',
+  buildingAddress: '',
+  laneAddress: '',
+  lng: '',
+  lat: '',
   available: true,
   unavailableReason: '',
   activeHoursStart: '09:00',
@@ -38,12 +49,38 @@ function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [hospitals, setHospitals] = useState([]);
+  const [locating, setLocating] = useState(false);
+  const [locationMessage, setLocationMessage] = useState('');
 
   const activeTemplate = useMemo(() => (role === 'patient' ? patientInitial : doctorInitial), [role]);
 
+  const fillLocationFromBrowser = async () => {
+    setLocating(true);
+    setLocationMessage('Requesting location permission...');
+
+    try {
+      const coords = await requestBrowserLocation();
+      setForm((prev) => ({
+        ...prev,
+        lng: coords.lng,
+        lat: coords.lat,
+      }));
+      setLocationMessage('Location auto-filled from your browser.');
+    } catch (requestError) {
+      setLocationMessage(requestError.message);
+    } finally {
+      setLocating(false);
+    }
+  };
+
   const changeRole = (newRole) => {
     setRole(newRole);
-    setForm(newRole === 'patient' ? patientInitial : doctorInitial);
+    const template = newRole === 'patient' ? patientInitial : doctorInitial;
+    setForm({
+      ...template,
+      lng: form.lng || '',
+      lat: form.lat || '',
+    });
     setError('');
   };
 
@@ -54,6 +91,11 @@ function RegisterPage() {
       .then((result) => setHospitals(result))
       .catch(() => setHospitals([]));
   }, [role]);
+
+  useEffect(() => {
+    fillLocationFromBrowser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -146,7 +188,9 @@ function RegisterPage() {
               if (role === 'doctor' && key === 'hospitalId') return null;
               return (
                 <label key={key} className="block space-y-2">
-                  <span className="text-sm font-semibold capitalize text-slate-200">{key}</span>
+                  <span className="text-sm font-semibold capitalize text-slate-200">
+                    {key === 'homeAddress' ? 'Doctor Home Address' : key === 'buildingAddress' ? 'Building / House No.' : key === 'laneAddress' ? 'Lane / Area' : key === 'bloodGroup' ? 'Blood Group' : key === 'lng' ? 'Longitude (Auto)' : key === 'lat' ? 'Latitude (Auto)' : key}
+                  </span>
                   <input
                     type={type}
                     name={key}
@@ -158,6 +202,21 @@ function RegisterPage() {
                 </label>
               );
             })}
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs text-slate-300">Location is fetched from browser permission so users do not need to enter coordinates manually.</p>
+              <button
+                type="button"
+                onClick={fillLocationFromBrowser}
+                disabled={locating}
+                className="rounded-lg border border-white/20 px-3 py-2 text-xs font-bold text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {locating ? 'Fetching location...' : 'Use Current Location'}
+              </button>
+            </div>
+            {locationMessage && <p className="mt-2 text-xs text-cyan-200">{locationMessage}</p>}
           </div>
 
           {role === 'doctor' && (

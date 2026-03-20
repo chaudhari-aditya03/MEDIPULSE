@@ -10,12 +10,16 @@ import {
 	createPatientController,
 	updatePatientController,
 	deletePatientController,
+	getNearbySupportForPatientController,
 } from "../controllers/patientController.js";
 
 const patientRouter = Router();
 
 // GET /patients - Get all patients (admin only)
 patientRouter.get("/", requireRoles("admin", "hospital"), getAllPatientsController);
+
+// GET /patients/:id - Get a specific patient by ID
+patientRouter.get("/me/nearby-support", requireRoles("patient"), getNearbySupportForPatientController);
 
 // GET /patients/:id - Get a specific patient by ID
 patientRouter.get("/:id", requireOwnerOrAdmin("id"), getPatientByIdController);

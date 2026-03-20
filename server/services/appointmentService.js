@@ -82,13 +82,13 @@ const buildHydratedAppointmentById = async (id) => {
     return Appointment.findById(id)
         .populate({
             path: 'doctorId',
-            select: 'name specialization email contact contactNumber hospitalId',
+            select: 'name specialization email contact contactNumber bloodGroup homeAddress buildingAddress laneAddress hospitalId',
             populate: {
                 path: 'hospitalId',
                 select: 'name',
             },
         })
-        .populate('patientId', 'name email age contactNumber');
+        .populate('patientId', 'name email age contactNumber bloodGroup address buildingAddress laneAddress');
 };
 
 const getRazorpayClient = () => {
@@ -157,13 +157,13 @@ const getAllAppointmentsService = async () => {
             .sort({ appointmentDate: -1 })
             .populate({
                 path: 'doctorId',
-                select: 'name specialization email contact contactNumber hospitalId',
+                select: 'name specialization email contact contactNumber bloodGroup homeAddress buildingAddress laneAddress hospitalId',
                 populate: {
                     path: 'hospitalId',
                     select: 'name',
                 },
             })
-            .populate('patientId', 'name email age contactNumber');
+            .populate('patientId', 'name email age contactNumber bloodGroup address buildingAddress laneAddress');
         return appointments;
     } catch (error) {
         throw error;
@@ -175,13 +175,13 @@ const getAppointmentByIdService = async (id) => {
         const appointment = await Appointment.findById(id)
             .populate({
                 path: 'doctorId',
-                select: 'name specialization email contact contactNumber hospitalId',
+                select: 'name specialization email contact contactNumber bloodGroup homeAddress buildingAddress laneAddress hospitalId',
                 populate: {
                     path: 'hospitalId',
                     select: 'name',
                 },
             })
-            .populate('patientId', 'name email age contactNumber');
+            .populate('patientId', 'name email age contactNumber bloodGroup address buildingAddress laneAddress');
         if (!appointment) {
             throw new Error("Appointment not found");
         }
@@ -205,13 +205,13 @@ const getMyAppointmentsService = async (userId, role) => {
             .sort({ appointmentDate: -1 })
             .populate({
                 path: 'doctorId',
-                select: 'name specialization email contact contactNumber hospitalId',
+                select: 'name specialization email contact contactNumber bloodGroup homeAddress buildingAddress laneAddress hospitalId',
                 populate: {
                     path: 'hospitalId',
                     select: 'name',
                 },
             })
-            .populate('patientId', 'name email age contactNumber');
+            .populate('patientId', 'name email age contactNumber bloodGroup address buildingAddress laneAddress');
 
         return appointments;
     } catch (error) {
@@ -228,13 +228,13 @@ const createAppointmentService = async (appointmentData) => {
         const hydratedAppointment = await Appointment.findById(newAppointment._id)
             .populate({
                 path: 'doctorId',
-                select: 'name specialization email contact contactNumber hospitalId',
+                select: 'name specialization email contact contactNumber bloodGroup homeAddress buildingAddress laneAddress hospitalId',
                 populate: {
                     path: 'hospitalId',
                     select: 'name',
                 },
             })
-            .populate('patientId', 'name email age contactNumber');
+            .populate('patientId', 'name email age contactNumber bloodGroup address buildingAddress laneAddress');
 
         return { message: "Appointment created successfully", appointment: hydratedAppointment };
     } catch (error) {

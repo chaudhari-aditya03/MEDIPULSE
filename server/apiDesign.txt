@@ -122,3 +122,55 @@ Hospitals:
 - PATCH /hospitals/:id/reject
 	Role: admin.
 	Reject hospital.
+
+Ambulances:
+- POST /api/ambulances
+	Roles: admin, hospital.
+	Create ambulance.
+- GET /api/ambulances
+	Roles: admin, hospital.
+	Get all ambulances.
+- GET /api/ambulances/:id
+	Roles: admin, hospital.
+	Get ambulance by id.
+- PUT /api/ambulances/:id
+	Roles: admin, hospital.
+	Update ambulance details.
+- DELETE /api/ambulances/:id
+	Roles: admin, hospital.
+	Delete ambulance.
+- PUT /api/ambulances/:id/location
+	Roles: admin, hospital, driver.
+	Update ambulance location.
+	Body: { lng, lat }
+- PUT /api/ambulances/:id/status
+	Roles: admin, hospital, driver.
+	Update ambulance status.
+	Body: { status }
+- GET /api/ambulances/nearby?lng=&lat=&radius=
+	Roles: admin, hospital, patient.
+	Find nearby available ambulances sorted by distance.
+
+Emergency:
+- POST /api/emergency
+	Roles: patient, admin.
+	Create emergency request.
+	Body: { patientId, lng, lat }
+- POST /api/emergency/:emergencyId/assign
+	Roles: admin, hospital.
+	Assign nearest available ambulance and mark it BUSY.
+- POST /api/emergency/:id/accept
+	Roles: driver, admin.
+	Accept emergency request.
+- POST /api/emergency/:id/complete
+	Roles: driver, admin, hospital.
+	Complete emergency request.
+- POST /api/emergency/:id/cancel
+	Roles: patient, admin, hospital.
+	Cancel emergency request.
+
+Realtime Events (Planned):
+- NEW_EMERGENCY
+- AMBULANCE_ACCEPTED
+- AMBULANCE_LOCATION_UPDATE
+- EMERGENCY_COMPLETED

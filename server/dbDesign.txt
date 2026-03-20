@@ -116,3 +116,44 @@ Payment Collection:
 - paidAt (Date, default: null, indexed)
 - createdAt (Date)
 - updatedAt (Date)
+
+Ambulance Collection:
+- _id (ObjectId)
+- vehicleNumber (String, required, unique)
+- driverName (String, required)
+- driverPhone (String, required)
+- hospitalId (ObjectId ref: Hospital, required, indexed)
+- location (GeoJSON Point, required)
+    type (String enum: ["Point"], default: "Point")
+    coordinates (Number[] [lng, lat], required)
+- status (String enum: ["AVAILABLE", "BUSY", "OFFLINE"], default: "AVAILABLE", indexed)
+- isActive (Boolean, default: true)
+- createdAt (Date)
+- updatedAt (Date)
+
+EmergencyRequest Collection:
+- _id (ObjectId)
+- patientId (ObjectId ref: Patient, required, indexed)
+- location (GeoJSON Point, required)
+    type (String enum: ["Point"], default: "Point")
+    coordinates (Number[] [lng, lat], required)
+- ambulanceId (ObjectId ref: Ambulance, default: null, indexed)
+- hospitalId (ObjectId ref: Hospital, default: null, indexed)
+- status (String enum: ["PENDING", "ACCEPTED", "COMPLETED", "CANCELLED"], default: "PENDING", indexed)
+- createdAt (Date)
+- updatedAt (Date)
+
+AmbulanceTracking Collection (Optional):
+- _id (ObjectId)
+- ambulanceId (ObjectId ref: Ambulance, required, indexed)
+- location (GeoJSON Point, required)
+    type (String enum: ["Point"], default: "Point")
+    coordinates (Number[] [lng, lat], required)
+- timestamp (Date, default: Date.now, indexed)
+
+Important Indexes (Ambulance Module):
+- ambulances.location: 2dsphere
+- ambulances.status: 1
+- ambulances.hospitalId: 1
+- emergency_requests.location: 2dsphere
+- ambulance_tracking.location: 2dsphere

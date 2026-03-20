@@ -4,6 +4,7 @@ import { jsPDF } from 'jspdf';
 import TopNav from '../components/TopNav';
 import { apiFetch } from '../lib/api';
 import { getAuthSession } from '../lib/auth';
+import { requestBrowserLocation, reverseGeocodeCoordinates } from '../lib/geolocation';
 
 const statusStyles = {
   scheduled: 'border-amber-300/40 bg-amber-300/10 text-amber-200',
@@ -178,6 +179,9 @@ function PatientDashboardPage() {
   const [appointments, setAppointments] = useState([]);
   const [appointmentMessage, setAppointmentMessage] = useState('');
   const [error, setError] = useState('');
+  const [supportInfo, setSupportInfo] = useState({ nearestHospital: null, nearestAmbulance: null, nearestDoctor: null });
+  const [currentPlaceName, setCurrentPlaceName] = useState('');
+  const [emergencyLoading, setEmergencyLoading] = useState(false);
   const [hospitalOptions, setHospitalOptions] = useState([]);
   const [doctorOptions, setDoctorOptions] = useState([]);
   const [createForm, setCreateForm] = useState({ hospitalId: '', doctorId: '', appointmentDate: '', appointmentTime: '' });
@@ -193,6 +197,58 @@ function PatientDashboardPage() {
   useEffect(() => {
     loadMyAppointments().catch((requestError) => setError(requestError.message));
   }, []);
+
+  useEffect(() => {
+    const loadNearbySupport = async () => {
+      try {
+        const patient = await apiFetch(`/patients/${session.id}`, { token: session.token });
+        const patientLng = patient?.geoLocation?.coordinates?.[0];
+        const patientLat = patient?.geoLocation?.coordinates?.[1];
+
+        if (Number.isFinite(Number(patientLng)) && Number.isFinite(Number(patientLat))) {
+          try {
+            const place = await reverseGeocodeCoordinates(patientLng, patientLat);
+            setCurrentPlaceName(place || 'Unknown place');
+          } catch {
+            setCurrentPlaceName('Unknown place');
+          }
+        }
+
+        const data = await apiFetch('/patients/me/nearby-support', { token: session.token });
+        setSupportInfo({
+          nearestHospital: data?.nearestHospital || null,
+          nearestAmbulance: data?.nearestAmbulance || null,
+          nearestDoctor: data?.nearestDoctor || null,
+        });
+        return;
+      } catch {
+        // Fallback to browser geolocation based lookup.
+      }
+
+      try {
+        const coords = await requestBrowserLocation();
+        try {
+          const place = await reverseGeocodeCoordinates(coords.lng, coords.lat);
+          setCurrentPlaceName(place || 'Unknown place');
+        } catch {
+          setCurrentPlaceName('Unknown place');
+        }
+
+        const data = await apiFetch(`/api/emergency/support?lng=${coords.lng}&lat=${coords.lat}`, {
+          token: session.token,
+        });
+        setSupportInfo({
+          nearestHospital: data?.nearestHospital || null,
+          nearestAmbulance: data?.nearestAmbulance || null,
+          nearestDoctor: data?.nearestDoctor || null,
+        });
+      } catch {
+        setSupportInfo({ nearestHospital: null, nearestAmbulance: null, nearestDoctor: null });
+      }
+    };
+
+    loadNearbySupport();
+  }, [session.token]);
 
   useEffect(() => {
     const loadHospitals = async () => {
@@ -380,6 +436,51 @@ function PatientDashboardPage() {
     }
   };
 
+  const triggerEmergency = async () => {
+    setError('');
+    setAppointmentMessage('');
+    setEmergencyLoading(true);
+
+    try {
+      let lng = null;
+      let lat = null;
+
+      try {
+        const patient = await apiFetch(`/patients/${session.id}`, { token: session.token });
+        lng = patient?.geoLocation?.coordinates?.[0];
+        lat = patient?.geoLocation?.coordinates?.[1];
+      } catch {
+        lng = null;
+        lat = null;
+      }
+
+      if (!Number.isFinite(Number(lng)) || !Number.isFinite(Number(lat))) {
+        throw new Error('Update your profile latitude/longitude before triggering emergency.');
+      }
+
+      const result = await apiFetch('/api/emergency/trigger', {
+        method: 'POST',
+        token: session.token,
+        body: {
+          lng: Number(lng),
+          lat: Number(lat),
+        },
+      });
+
+      setSupportInfo((prev) => ({
+        nearestHospital: result?.support?.nearestHospital || prev.nearestHospital,
+        nearestAmbulance: result?.support?.nearestAmbulance || prev.nearestAmbulance,
+        nearestDoctor: result?.support?.nearestDoctor || prev.nearestDoctor,
+      }));
+
+      setAppointmentMessage('Emergency alert sent. Nearest hospital, ambulance, and doctor have been notified.');
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setEmergencyLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-ink text-white">
       <TopNav />
@@ -415,6 +516,45 @@ function PatientDashboardPage() {
         </section>
 
         <section className="space-y-6">
+          <div className="rounded-3xl border border-rose-300/30 bg-rose-300/10 p-5 sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-black sm:text-2xl">Emergency Assistance</h2>
+                <p className="mt-2 text-sm text-rose-100/90">Get nearest hospital, ambulance, and doctor details instantly.</p>
+              </div>
+              <button
+                type="button"
+                onClick={triggerEmergency}
+                disabled={emergencyLoading}
+                className="rounded-xl bg-rose-500 px-5 py-3 text-sm font-black uppercase tracking-wider text-white transition hover:bg-rose-400 disabled:opacity-60"
+              >
+                {emergencyLoading ? 'Sending Alert...' : 'Emergency Alert'}
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              <article className="rounded-2xl border border-cyan-300/30 bg-cyan-300/10 p-4 md:col-span-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-cyan-100">Your Current Place</p>
+                <p className="mt-2 font-semibold text-white">{currentPlaceName || 'Detecting place from your location...'}</p>
+              </article>
+              <article className="rounded-2xl border border-white/20 bg-white/10 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-200">Nearest Hospital</p>
+                <p className="mt-2 font-bold text-white">{supportInfo.nearestHospital?.name || 'Unavailable'}</p>
+                <p className="text-xs text-slate-200">{supportInfo.nearestHospital?.phone || '-'}</p>
+              </article>
+              <article className="rounded-2xl border border-white/20 bg-white/10 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-200">Nearest Ambulance</p>
+                <p className="mt-2 font-bold text-white">{supportInfo.nearestAmbulance?.vehicleNumber || 'Unavailable'}</p>
+                <p className="text-xs text-slate-200">{supportInfo.nearestAmbulance?.driverName || '-'}</p>
+              </article>
+              <article className="rounded-2xl border border-white/20 bg-white/10 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-200">Nearest Doctor</p>
+                <p className="mt-2 font-bold text-white">{supportInfo.nearestDoctor?.name || 'Unavailable'}</p>
+                <p className="text-xs text-slate-200">{supportInfo.nearestDoctor?.specialization || '-'}</p>
+              </article>
+            </div>
+          </div>
+
           <form onSubmit={createAppointment} className="rounded-3xl border border-white/10 bg-white/5 p-5 sm:p-6">
             <h2 className="text-xl font-black sm:text-2xl">Book Appointment</h2>
             <p className="mt-2 text-sm text-slate-300">Select hospital, then doctor, then date and time to book your appointment.</p>

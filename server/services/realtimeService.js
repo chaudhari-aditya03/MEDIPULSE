@@ -117,6 +117,52 @@ export const notifyPatientAppointmentUpdate = (patientId, appointmentData) => {
 };
 
 /**
+ * Broadcast emergency alert payload to connected clients.
+ */
+export const broadcastEmergencyAlert = (payload = {}) => {
+  try {
+    const alertPayload = {
+      emergencyId: payload.emergencyId,
+      patientId: payload.patientId,
+      patient: payload.patient || null,
+      location: payload.location,
+      nearestHospital: payload.nearestHospital || null,
+      nearestDoctor: payload.nearestDoctor || null,
+      nearestAmbulance: payload.nearestAmbulance || null,
+      createdAt: new Date().toISOString(),
+    };
+
+    io.emit('emergency:newAlert', alertPayload);
+
+    if (payload?.nearestHospital?._id) {
+      io.to(`hospital:${String(payload.nearestHospital._id)}`).emit('emergency:newAlertHospital', alertPayload);
+    }
+
+    if (payload?.nearestDoctor?._id) {
+      io.to(`doctor:${String(payload.nearestDoctor._id)}`).emit('emergency:newAlertDoctor', alertPayload);
+    }
+
+    if (payload?.nearestAmbulance?._id) {
+      io.to(`ambulance:${String(payload.nearestAmbulance._id)}`).emit('emergency:newAlertAmbulance', alertPayload);
+    }
+
+    io.to('admin:notifications').emit('emergency:newAlertAdmin', {
+      emergencyId: payload.emergencyId,
+      patientId: payload.patientId,
+      patientName: payload.patient?.name || null,
+      patientContactNumber: payload.patient?.contactNumber || null,
+      patientAddress: payload.patient?.address || null,
+      nearestHospitalName: payload.nearestHospital?.name || null,
+      nearestDoctorName: payload.nearestDoctor?.name || null,
+      nearestAmbulanceVehicle: payload.nearestAmbulance?.vehicleNumber || null,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Error broadcasting emergency alert:', error.message);
+  }
+};
+
+/**
  * Get connected users count
  */
 export const getConnectedUsersCount = () => {

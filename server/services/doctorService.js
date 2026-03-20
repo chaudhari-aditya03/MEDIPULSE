@@ -4,6 +4,20 @@ import bcrypt from "bcrypt";
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
+const toPoint = (lng, lat, label = "Location") => {
+    const parsedLng = Number(lng);
+    const parsedLat = Number(lat);
+
+    if (!Number.isFinite(parsedLng) || !Number.isFinite(parsedLat)) {
+        throw new Error(`${label} coordinates are required in [lng, lat] format`);
+    }
+
+    return {
+        type: "Point",
+        coordinates: [parsedLng, parsedLat],
+    };
+};
+
 const normalizeDoctorAvailabilityPayload = (payload) => {
     const normalized = { ...payload };
 
@@ -83,7 +97,7 @@ const getDoctorsForBookingService = async (searchTerm = "", hospitalId = "") => 
             : baseQuery;
 
         const doctors = await Doctor.find(query)
-            .select("_id name specialization experience address hospitalId available unavailableReason activeHours")
+            .select("_id name specialization experience homeAddress homeLocation address hospitalId available unavailableReason activeHours")
             .populate('hospitalId', 'name')
             .limit(hospitalId ? 100 : 20)
             .sort({ name: 1 });
@@ -107,6 +121,14 @@ const createDoctorService = async (doctorData, actorRole, actorId) => {
         }
 
         payload.contact = payload.contact || payload.contactNumber;
+        payload.homeAddress = String(payload.homeAddress || payload.address || "").trim();
+        payload.address = payload.homeAddress;
+        payload.buildingAddress = String(payload.buildingAddress || payload.homeAddress || "").trim();
+        payload.laneAddress = String(payload.laneAddress || payload.homeAddress || "").trim();
+        payload.bloodGroup = String(payload.bloodGroup || "").trim().toUpperCase();
+        payload.homeLocation = toPoint(payload.lng, payload.lat, "Doctor home");
+        delete payload.lng;
+        delete payload.lat;
 
         if (actorRole === "hospital") {
             payload.hospitalId = actorId;
@@ -139,6 +161,29 @@ const updateDoctorService = async (id, doctorData, actorRole, actorId) => {
 
         if (payload.contactNumber && !payload.contact) {
             payload.contact = payload.contactNumber;
+        }
+
+        if (payload.homeAddress || payload.address) {
+            payload.homeAddress = String(payload.homeAddress || payload.address || "").trim();
+            payload.address = payload.homeAddress;
+        }
+
+        if (payload.buildingAddress || payload.homeAddress) {
+            payload.buildingAddress = String(payload.buildingAddress || payload.homeAddress || "").trim();
+        }
+
+        if (payload.laneAddress || payload.homeAddress) {
+            payload.laneAddress = String(payload.laneAddress || payload.homeAddress || "").trim();
+        }
+
+        if (payload.bloodGroup) {
+            payload.bloodGroup = String(payload.bloodGroup).trim().toUpperCase();
+        }
+
+        if (Object.prototype.hasOwnProperty.call(payload, "lng") || Object.prototype.hasOwnProperty.call(payload, "lat")) {
+            payload.homeLocation = toPoint(payload.lng, payload.lat, "Doctor home");
+            delete payload.lng;
+            delete payload.lat;
         }
 
         if (actorRole === "doctor" && String(id) !== String(actorId)) {

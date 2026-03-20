@@ -11,8 +11,9 @@ import appointmentRouter from './routes/appointmentRouter.js';
 import authRouter from './routes/authRouter.js';
 import hospitalRouter from './routes/hospitalRouter.js';
 import visitorCounterRouter from './routes/visitorCounterRouter.js';
+import ambulanceRouter from './routes/ambulanceRoutes.js';
+import emergencyRouter from './routes/emergencyRouter.js';
 import dbConnect from './utils/dbConnect.js';
-import { startReminderScheduler, stopReminderScheduler } from './services/reminderService.js';
 
 const currentFilePath = fileURLToPath(import.meta.url);
 const currentDirPath = path.dirname(currentFilePath);
@@ -58,6 +59,8 @@ app.use('/appointments', appointmentRouter);
 app.use('/auth', authRouter);
 app.use('/hospitals', hospitalRouter);
 app.use('/visitor-counter', visitorCounterRouter);
+app.use('/api/ambulances', ambulanceRouter);
+app.use('/api/emergency', emergencyRouter);
 
 // ===== SOCKET.IO EVENT HANDLERS =====
 const connectedUsers = new Map(); // { userId: { socketId, role, rooms } }
@@ -77,6 +80,8 @@ io.on('connection', (socket) => {
     // Join rooms for real-time updates
     if (appointmentId) socket.join(`appointment:${appointmentId}`);
     if (doctorId) socket.join(`doctor:${doctorId}`);
+    if (role === 'doctor' && userId) socket.join(`doctor:${userId}`);
+    if (role === 'hospital' && userId) socket.join(`hospital:${userId}`);
     if (role === 'doctor') socket.join(`doctors:availability`);
     if (role === 'admin') socket.join(`admin:notifications`);
 
@@ -127,7 +132,6 @@ export { io, connectedUsers };
 const startServer = async () => {
   try {
     await dbConnect();
-    startReminderScheduler();
 
     httpServer.listen(PORT, () => {
       console.log(`🚀 Server is running on port ${PORT}`);
@@ -138,15 +142,5 @@ const startServer = async () => {
     process.exit(1);
   }
 };
-
-process.on('SIGINT', () => {
-  stopReminderScheduler();
-  process.exit(0);
-});
-
-process.on('SIGTERM', () => {
-  stopReminderScheduler();
-  process.exit(0);
-});
 
 startServer();

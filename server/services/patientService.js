@@ -1,6 +1,23 @@
 //create patient service functions here
 import Patient from "../models/patientModel.js";
+import Hospital from "../models/hospitalModel.js";
+import Ambulance from "../models/ambulanceModel.js";
+import Doctor from "../models/doctorModel.js";
 import bcrypt from "bcrypt";
+
+const toPoint = (lng, lat, label = "Location") => {
+    const parsedLng = Number(lng);
+    const parsedLat = Number(lat);
+
+    if (!Number.isFinite(parsedLng) || !Number.isFinite(parsedLat)) {
+        throw new Error(`${label} coordinates are required in [lng, lat] format`);
+    }
+
+    return {
+        type: "Point",
+        coordinates: [parsedLng, parsedLat],
+    };
+};
 
 const getAllPatientsService = async (actorRole, actorId) => {
     try {
@@ -47,6 +64,14 @@ const createPatientService = async (patientData, actorRole, actorId) => {
             payload.hospitalId = actorId;
         }
 
+        payload.geoLocation = toPoint(payload.lng, payload.lat, "Patient");
+        payload.address = String(payload.address || "").trim() || "Patient home";
+        payload.buildingAddress = String(payload.buildingAddress || payload.address || "").trim();
+        payload.laneAddress = String(payload.laneAddress || payload.address || "").trim();
+        payload.bloodGroup = String(payload.bloodGroup || "").trim().toUpperCase();
+        delete payload.lng;
+        delete payload.lat;
+
         const newPatient = new Patient(payload);
         await newPatient.save();
         return { message: "Patient created successfully", patient: await Patient.findById(newPatient._id).select("-password") };
@@ -69,6 +94,23 @@ const updatePatientService = async (id, patientData, actorRole, actorId) => {
 
         if (actorRole === "hospital") {
             delete payload.hospitalId;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(payload, "lng") || Object.prototype.hasOwnProperty.call(payload, "lat")) {
+            payload.geoLocation = toPoint(payload.lng, payload.lat, "Patient");
+            delete payload.lng;
+            delete payload.lat;
+        }
+
+        if (payload.bloodGroup) {
+            payload.bloodGroup = String(payload.bloodGroup).trim().toUpperCase();
+        }
+
+        if (payload.address || payload.buildingAddress || payload.laneAddress) {
+            const resolvedAddress = String(payload.address || "").trim();
+            payload.address = resolvedAddress || String(payload.buildingAddress || payload.laneAddress || "").trim();
+            payload.buildingAddress = String(payload.buildingAddress || payload.address || "").trim();
+            payload.laneAddress = String(payload.laneAddress || payload.address || "").trim();
         }
 
         if (actorRole === "patient" && String(id) !== String(actorId)) {
@@ -100,10 +142,65 @@ const deletePatientService = async (id, actorRole, actorId) => {
     }
 };
 
+const getNearbySupportForPatientService = async (patientId, radius = 10000) => {
+    const patient = await Patient.findById(patientId).select("geoLocation");
+    if (!patient) {
+        throw new Error("Patient not found");
+    }
+
+    if (!patient.geoLocation?.coordinates?.length) {
+        throw new Error("Patient location is missing. Please update profile coordinates.");
+    }
+
+    const maxDistance = Number(radius);
+
+    const nearestHospital = await Hospital.findOne({
+        status: "approved",
+        location: {
+            $near: {
+                $geometry: patient.geoLocation,
+                $maxDistance: maxDistance,
+            },
+        },
+    }).select("name phone location address");
+
+    const nearestAmbulance = await Ambulance.findOne({
+        status: "AVAILABLE",
+        isActive: true,
+        location: {
+            $near: {
+                $geometry: patient.geoLocation,
+                $maxDistance: maxDistance,
+            },
+        },
+    }).select("vehicleNumber driverName driverPhone hospitalId location status");
+
+    const nearestDoctor = await Doctor.findOne({
+        isApproved: true,
+        available: true,
+        homeLocation: {
+            $near: {
+                $geometry: patient.geoLocation,
+                $maxDistance: maxDistance,
+            },
+        },
+    })
+        .select("name specialization contactNumber homeAddress homeLocation hospitalId")
+        .populate("hospitalId", "name");
+
+    return {
+        patientLocation: patient.geoLocation,
+        nearestHospital,
+        nearestAmbulance,
+        nearestDoctor,
+    };
+};
+
 export {
     getAllPatientsService,
     getPatientByIdService,
     createPatientService,
     updatePatientService,
     deletePatientService,
+    getNearbySupportForPatientService,
 };

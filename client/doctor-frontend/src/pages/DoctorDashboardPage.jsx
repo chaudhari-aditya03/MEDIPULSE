@@ -49,6 +49,7 @@ function DoctorDashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [activeSection, setActiveSection] = useState('appointments');
+  const [emergencyAlerts, setEmergencyAlerts] = useState([]);
 
   const loadAppointments = async () => {
     const result = await apiFetch('/appointments/my', { token: session.token });
@@ -58,6 +59,19 @@ function DoctorDashboardPage() {
   useEffect(() => {
     loadAppointments().catch((requestError) => setError(requestError.message));
   }, []);
+
+  useEffect(() => {
+    const loadEmergencyAlerts = async () => {
+      try {
+        const result = await apiFetch('/api/emergency/alerts/my?status=PENDING', { token: session.token });
+        setEmergencyAlerts(Array.isArray(result) ? result : []);
+      } catch {
+        setEmergencyAlerts([]);
+      }
+    };
+
+    loadEmergencyAlerts();
+  }, [session.token]);
 
   const allocatedPatients = useMemo(() => {
     const map = new Map();
@@ -319,6 +333,23 @@ function DoctorDashboardPage() {
           </div>
           {message && <p className="mt-4 text-sm text-neon">{message}</p>}
           {error && <p className="mt-4 text-sm text-coral">{error}</p>}
+
+          <div className="mt-5 rounded-2xl border border-rose-300/30 bg-rose-300/10 p-4">
+            <h2 className="text-lg font-black text-rose-100">Emergency Alerts Near You</h2>
+            <p className="mt-1 text-xs text-rose-100/90">If emergency is valid, call patient immediately and coordinate ambulance dispatch.</p>
+
+            <div className="mt-3 space-y-2">
+              {emergencyAlerts.slice(0, 5).map((alert) => (
+                <article key={alert._id} className="rounded-xl border border-white/20 bg-white/10 p-3">
+                  <p className="text-sm font-bold text-white">{alert.patientSnapshot?.name || alert.patientId?.name || 'Patient'}</p>
+                  <p className="text-xs text-slate-200">Blood Group: {alert.patientSnapshot?.bloodGroup || alert.patientId?.bloodGroup || '-'}</p>
+                  <p className="text-xs text-slate-200">Contact: {alert.patientSnapshot?.contactNumber || alert.patientId?.contactNumber || '-'}</p>
+                  <p className="text-xs text-slate-200">Address: {alert.patientSnapshot?.address || alert.patientId?.address || '-'}</p>
+                </article>
+              ))}
+              {emergencyAlerts.length === 0 && <p className="text-xs text-slate-200">No pending emergency alerts right now.</p>}
+            </div>
+          </div>
         </section>
 
         <section className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4">

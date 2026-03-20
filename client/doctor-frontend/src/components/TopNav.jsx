@@ -44,6 +44,11 @@ function TopNav() {
           <NavLink to="/" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
             Home
           </NavLink>
+          {session?.role === 'hospital' && (
+            <NavLink to="/ambulance" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
+              Ambulance Module
+            </NavLink>
+          )}
           {!session && (
             <>
               <NavLink to="/login" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
@@ -96,6 +101,11 @@ function TopNav() {
             <NavLink to="/" onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
               Home
             </NavLink>
+            {session?.role === 'hospital' && (
+              <NavLink to="/ambulance" onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
+                Ambulance Module
+              </NavLink>
+            )}
             {!session && (
               <>
                 <NavLink to="/login" onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">

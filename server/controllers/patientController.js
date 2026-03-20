@@ -4,6 +4,7 @@ import {
 	createPatientService,
 	updatePatientService,
 	deletePatientService,
+	getNearbySupportForPatientService,
 } from "../services/patientService.js";
 
 const getAllPatientsController = async (req, res) => {
@@ -69,10 +70,21 @@ const deletePatientController = async (req, res) => {
 	}
 };
 
+const getNearbySupportForPatientController = async (req, res) => {
+	try {
+		const radius = req.query.radius || 10000;
+		const result = await getNearbySupportForPatientService(req.userId, radius);
+		return res.status(200).json(result);
+	} catch (error) {
+		return res.status(400).json({ error: error.message });
+	}
+};
+
 export {
 	getAllPatientsController,
 	getPatientByIdController,
 	createPatientController,
 	updatePatientController,
 	deletePatientController,
+	getNearbySupportForPatientController,
 };

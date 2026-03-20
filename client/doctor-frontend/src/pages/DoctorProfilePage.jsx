@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import TopNav from '../components/TopNav';
 import { apiFetch } from '../lib/api';
 import { getAuthSession } from '../lib/auth';
+import { requestBrowserLocation } from '../lib/geolocation';
 
 function DoctorProfilePage() {
   const session = getAuthSession();
@@ -9,6 +10,30 @@ function DoctorProfilePage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [locating, setLocating] = useState(false);
+  const [locationMessage, setLocationMessage] = useState('');
+
+  const fillLocationFromBrowser = async () => {
+    setLocating(true);
+    setLocationMessage('Requesting location permission...');
+
+    try {
+      const coords = await requestBrowserLocation();
+      setProfile((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          lng: coords.lng,
+          lat: coords.lat,
+        };
+      });
+      setLocationMessage('Location auto-filled from your browser.');
+    } catch (requestError) {
+      setLocationMessage(requestError.message);
+    } finally {
+      setLocating(false);
+    }
+  };
 
   const loadProfile = async () => {
     setLoading(true);
@@ -18,6 +43,12 @@ function DoctorProfilePage() {
       const result = await apiFetch(`/doctors/${session.id}`, { token: session.token });
       setProfile({
         ...result,
+        homeAddress: result.homeAddress || result.address || '',
+        buildingAddress: result.buildingAddress || '',
+        laneAddress: result.laneAddress || '',
+        bloodGroup: result.bloodGroup || '',
+        lng: result.homeLocation?.coordinates?.[0] ?? '',
+        lat: result.homeLocation?.coordinates?.[1] ?? '',
         available: typeof result.available === 'boolean' ? result.available : true,
         unavailableReason: result.unavailableReason || '',
         activeHours: {
@@ -36,6 +67,16 @@ function DoctorProfilePage() {
     loadProfile();
   }, []);
 
+  useEffect(() => {
+    if (!profile) return;
+
+    const hasCoords = Number.isFinite(Number(profile.lng)) && Number.isFinite(Number(profile.lat));
+    if (!hasCoords) {
+      fillLocationFromBrowser();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile]);
+
   const updateProfile = async (event) => {
     event.preventDefault();
     if (!profile) return;
@@ -53,7 +94,12 @@ function DoctorProfilePage() {
           contactNumber: profile.contactNumber,
           specialization: profile.specialization,
           experience: Number(profile.experience),
-          address: profile.address,
+          homeAddress: profile.homeAddress,
+          buildingAddress: profile.buildingAddress,
+          laneAddress: profile.laneAddress,
+          bloodGroup: profile.bloodGroup,
+          lng: Number(profile.lng),
+          lat: Number(profile.lat),
           available: Boolean(profile.available),
           unavailableReason: profile.available ? '' : profile.unavailableReason,
           activeHours: {
@@ -82,12 +128,12 @@ function DoctorProfilePage() {
 
           {!loading && profile && (
             <form onSubmit={updateProfile} className="mt-6 grid gap-4 sm:grid-cols-2">
-              {['name', 'age', 'contactNumber', 'specialization', 'experience', 'address'].map((field) => (
+              {['name', 'age', 'contactNumber', 'specialization', 'experience', 'homeAddress', 'buildingAddress', 'laneAddress', 'bloodGroup', 'lng', 'lat'].map((field) => (
                 <label key={field} className="space-y-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-300">{field}</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-300">{field === 'homeAddress' ? 'HOME ADDRESS' : field === 'buildingAddress' ? 'BUILDING / HOUSE NO.' : field === 'laneAddress' ? 'LANE / AREA' : field === 'bloodGroup' ? 'BLOOD GROUP' : field}</span>
                   <input
                     value={profile[field] ?? ''}
-                    onChange={(event) => setProfile((prev) => ({ ...prev, [field]: event.target.value }))}
+                    onChange={(event) => setProfile((prev) => ({ ...prev, [field]: field === 'bloodGroup' ? event.target.value.toUpperCase() : event.target.value }))}
                     className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3"
                     required
                   />
@@ -153,6 +199,21 @@ function DoctorProfilePage() {
                   required
                 />
               </label>
+
+              <div className="sm:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs text-slate-300">Allow browser location to auto-fill your home coordinates.</p>
+                  <button
+                    type="button"
+                    onClick={fillLocationFromBrowser}
+                    disabled={locating}
+                    className="rounded-lg border border-white/20 px-3 py-2 text-xs font-bold text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {locating ? 'Fetching location...' : 'Use Current Location'}
+                  </button>
+                </div>
+                {locationMessage && <p className="mt-2 text-xs text-cyan-200">{locationMessage}</p>}
+              </div>
 
               <div className="sm:col-span-2">
                 <button className="rounded-xl bg-neon px-5 py-3 text-sm font-black uppercase tracking-wider text-ink">Save Profile</button>

@@ -1,6 +1,27 @@
 import mongoose from "mongoose";
 
 const { Schema, model } = mongoose;
+const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
+
+const pointSchema = new Schema(
+	{
+		type: {
+			type: String,
+			enum: ["Point"],
+			default: "Point",
+		},
+		coordinates: {
+			type: [Number],
+			validate: {
+				validator(value) {
+					return !value || (Array.isArray(value) && value.length === 2);
+				},
+				message: "Doctor homeLocation coordinates must be [lng, lat]",
+			},
+		},
+	},
+	{ _id: false }
+);
 
 const doctorSchema = new Schema(
 	{
@@ -27,6 +48,12 @@ const doctorSchema = new Schema(
 		},
 		contactNumber: {
 			type: String,
+			required: true,
+			trim: true,
+		},
+		bloodGroup: {
+			type: String,
+			enum: BLOOD_GROUPS,
 			required: true,
 			trim: true,
 		},
@@ -63,6 +90,25 @@ const doctorSchema = new Schema(
 			type: String,
 			required: true,
 			trim: true,
+		},
+		homeAddress: {
+			type: String,
+			required: true,
+			trim: true,
+		},
+		buildingAddress: {
+			type: String,
+			required: true,
+			trim: true,
+		},
+		laneAddress: {
+			type: String,
+			required: true,
+			trim: true,
+		},
+		homeLocation: {
+			type: pointSchema,
+			default: null,
 		},
 		hospitalId: {
 			type: mongoose.Schema.Types.ObjectId,
@@ -108,6 +154,8 @@ const doctorSchema = new Schema(
 		timestamps: true,
 	}
 );
+
+doctorSchema.index({ homeLocation: "2dsphere" });
 
 const Doctor = model("Doctor", doctorSchema);
 

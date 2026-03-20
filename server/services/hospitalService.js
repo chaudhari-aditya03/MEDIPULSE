@@ -5,10 +5,27 @@ import Patient from '../models/patientModel.js';
 import Payment from '../models/paymentModel.js';
 import bcrypt from 'bcrypt';
 
+const toPoint = (lng, lat, label = 'Hospital') => {
+  const parsedLng = Number(lng);
+  const parsedLat = Number(lat);
+
+  if (!Number.isFinite(parsedLng) || !Number.isFinite(parsedLat)) {
+    throw new Error(`${label} coordinates are required in [lng, lat] format`);
+  }
+
+  return {
+    type: 'Point',
+    coordinates: [parsedLng, parsedLat],
+  };
+};
+
 export const createHospitalService = async (hospitalData) => {
   const payload = { ...hospitalData };
   payload.email = String(payload.email).trim().toLowerCase();
   payload.password = await bcrypt.hash(payload.password, 10);
+  payload.location = toPoint(payload.lng, payload.lat, 'Hospital');
+  delete payload.lng;
+  delete payload.lat;
   const hospital = new Hospital(payload);
   await hospital.save();
   return hospital;
@@ -27,7 +44,15 @@ export const getHospitalByIdService = async (id) => {
 };
 
 export const updateHospitalService = async (id, updateData) => {
-  return await Hospital.findByIdAndUpdate(id, updateData, { new: true });
+  const payload = { ...updateData };
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'lng') || Object.prototype.hasOwnProperty.call(payload, 'lat')) {
+    payload.location = toPoint(payload.lng, payload.lat, 'Hospital');
+    delete payload.lng;
+    delete payload.lat;
+  }
+
+  return await Hospital.findByIdAndUpdate(id, payload, { new: true });
 };
 
 export const deleteHospitalService = async (id) => {

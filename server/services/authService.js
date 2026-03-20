@@ -8,6 +8,20 @@ import Hospital from "../models/hospitalModel.js";
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
+const toPoint = (lng, lat, label) => {
+    const parsedLng = Number(lng);
+    const parsedLat = Number(lat);
+
+    if (!Number.isFinite(parsedLng) || !Number.isFinite(parsedLat)) {
+        throw new Error(`${label} coordinates are required in [lng, lat] format`);
+    }
+
+    return {
+        type: "Point",
+        coordinates: [parsedLng, parsedLat],
+    };
+};
+
 
 const registerPatientService = async (patientData) => {
     try {
@@ -20,6 +34,14 @@ const registerPatientService = async (patientData) => {
         // Hash the password
         const hashedPassword = await bcrypt.hash(patientData.password, 10);
         patientData.password = hashedPassword;
+
+        patientData.geoLocation = toPoint(patientData.lng, patientData.lat, "Patient");
+        patientData.address = String(patientData.address || "").trim() || "Patient home";
+        patientData.buildingAddress = String(patientData.buildingAddress || patientData.address || "").trim();
+        patientData.laneAddress = String(patientData.laneAddress || patientData.address || "").trim();
+        patientData.bloodGroup = String(patientData.bloodGroup || "").trim().toUpperCase();
+        delete patientData.lng;
+        delete patientData.lat;
 
         // Create and save the patient
         const newPatient = new Patient(patientData);
@@ -56,6 +78,14 @@ const registerDoctorService = async (doctorData) => {
         const hashedPassword = await bcrypt.hash(doctorData.password, 10);
         doctorData.password = hashedPassword;
         doctorData.contact = doctorData.contact || doctorData.contactNumber;
+        doctorData.homeAddress = String(doctorData.homeAddress || doctorData.address || "").trim();
+        doctorData.address = doctorData.homeAddress;
+        doctorData.buildingAddress = String(doctorData.buildingAddress || doctorData.homeAddress || "").trim();
+        doctorData.laneAddress = String(doctorData.laneAddress || doctorData.homeAddress || "").trim();
+        doctorData.bloodGroup = String(doctorData.bloodGroup || "").trim().toUpperCase();
+        doctorData.homeLocation = toPoint(doctorData.lng, doctorData.lat, "Doctor home");
+        delete doctorData.lng;
+        delete doctorData.lat;
         doctorData.approvalStatus = "pending";
         doctorData.isApproved = false;
         doctorData.available = typeof doctorData.available === "boolean" ? doctorData.available : true;
@@ -148,8 +178,8 @@ const loginService = async (email, password, requestedRole) => {
             throw new Error("Invalid credentials");
         }
 
-        // Generate JWT token
-        const token = jwt.sign({ id: user._id, role }, process.env.JWT_SECRET, { expiresIn: "1h" });
+        // Generate JWT token without expiry so user stays logged in until explicit logout
+        const token = jwt.sign({ id: user._id, role }, process.env.JWT_SECRET);
 
         return { message: "User logged in successfully", token };
     } catch (error) {

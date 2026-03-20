@@ -9,6 +9,7 @@ import DoctorProfilePage from './pages/DoctorProfilePage';
 import PatientDashboardPage from './pages/PatientDashboardPage';
 import PatientProfilePage from './pages/PatientProfilePage';
 import HospitalDashboardPage from './pages/HospitalDashboardPage';
+import AmbulanceModulePage from './pages/AmbulanceModulePage';
 import NotFoundPage from './pages/NotFoundPage';
 import { getAuthSession } from './lib/auth';
 import { getDefaultRouteByRole } from './lib/api';
@@ -22,6 +23,14 @@ function App() {
       <Route path="/login" element={session ? <Navigate to={getDefaultRouteByRole(session.role)} replace /> : <LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/hospital/register" element={<HospitalRegisterPage />} />
+      <Route
+        path="/ambulance"
+        element={
+          <ProtectedRoute allowedRoles={['hospital']}>
+            <AmbulanceModulePage />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/doctor/dashboard"
         element={

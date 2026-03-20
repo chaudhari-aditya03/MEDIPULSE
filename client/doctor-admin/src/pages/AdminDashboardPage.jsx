@@ -12,6 +12,8 @@ const hospitalInitial = {
   licenseNumber: '',
   website: '',
   description: '',
+  lng: '',
+  lat: '',
 };
 
 const doctorInitial = {
@@ -23,7 +25,9 @@ const doctorInitial = {
   specialization: '',
   experience: '',
   licenseNumber: '',
-  address: '',
+  homeAddress: '',
+  lng: '',
+  lat: '',
   hospitalId: '',
 };
 
@@ -37,6 +41,7 @@ function AdminDashboardPage() {
   const [allDoctors, setAllDoctors] = useState([]);
   const [patients, setPatients] = useState([]);
   const [appointments, setAppointments] = useState([]);
+  const [ambulances, setAmbulances] = useState([]);
 
   const [hospitalForm, setHospitalForm] = useState(hospitalInitial);
   const [doctorForm, setDoctorForm] = useState(doctorInitial);
@@ -56,12 +61,13 @@ function AdminDashboardPage() {
 
     try {
       setError('');
-      const [hospitalData, doctorData, pendingDoctorData, patientData, appointmentData] = await Promise.all([
+      const [hospitalData, doctorData, pendingDoctorData, patientData, appointmentData, ambulanceData] = await Promise.all([
         apiFetch('/hospitals/admin/all', { token }).catch(() => []),
         apiFetch('/doctors', { token }).catch(() => []),
         apiFetch('/doctors/admin/pending', { token }).catch(() => []),
         apiFetch('/patients', { token }).catch(() => []),
         apiFetch('/appointments', { token }).catch(() => []),
+        apiFetch('/api/ambulances', { token }).catch(() => []),
       ]);
 
       setHospitals(hospitalData);
@@ -69,6 +75,7 @@ function AdminDashboardPage() {
       setPendingDoctors(pendingDoctorData);
       setPatients(patientData);
       setAppointments(appointmentData);
+      setAmbulances(ambulanceData);
     } catch (requestError) {
       setError(requestError.message);
     }
@@ -155,6 +162,17 @@ function AdminDashboardPage() {
     [appointments, normalizedSearchQuery],
   );
 
+  const filteredAmbulances = useMemo(
+    () => ambulances.filter((ambulance) => includesSearch(
+      ambulance.vehicleNumber,
+      ambulance.driverName,
+      ambulance.driverPhone,
+      ambulance.status,
+      ambulance.hospitalId,
+    )),
+    [ambulances, normalizedSearchQuery],
+  );
+
   const setSuccess = (message) => {
     setStatusMessage(message);
     setTimeout(() => setStatusMessage(''), 2500);
@@ -170,6 +188,8 @@ function AdminDashboardPage() {
         token,
         body: {
           ...hospitalForm,
+          lng: Number(hospitalForm.lng),
+          lat: Number(hospitalForm.lat),
           address: {},
         },
       });
@@ -245,6 +265,9 @@ function AdminDashboardPage() {
           ...doctorForm,
           age: Number(doctorForm.age),
           experience: Number(doctorForm.experience),
+          homeAddress: doctorForm.homeAddress,
+          lng: Number(doctorForm.lng),
+          lat: Number(doctorForm.lat),
         },
       });
       setDoctorForm(doctorInitial);
@@ -337,7 +360,7 @@ function AdminDashboardPage() {
         {error && <div className="rounded-xl border border-rose-400/40 bg-rose-400/10 px-4 py-3 text-sm font-semibold text-rose-300">{error}</div>}
 
         <div className="flex gap-1.5 overflow-x-auto border-b border-white/10 pb-1 sm:gap-2">
-          {['overview', 'hospitals', 'doctors', 'patients', 'appointments'].map((tab) => (
+          {['overview', 'hospitals', 'doctors', 'patients', 'ambulances', 'appointments'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -373,6 +396,7 @@ function AdminDashboardPage() {
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <MetricCard label="Total Patients" value={filteredPatients.length} accent="indigo" />
               <MetricCard label="Appointments" value={filteredAppointments.length} accent="rose" />
+              <MetricCard label="Ambulances" value={filteredAmbulances.length} accent="blue" />
               <MetricCard label="Completed" value={filteredAppointments.filter((item) => item.status === 'completed').length} accent="emerald" />
               <MetricCard label="Cancelled" value={filteredAppointments.filter((item) => item.status === 'cancelled').length} accent="rose" />
             </div>
@@ -538,12 +562,28 @@ function AdminDashboardPage() {
                   className="rounded-lg border border-white/15 bg-[#101a30] px-3 py-2 text-sm"
                 />
                 <input
-                  name="address"
-                  value={doctorForm.address}
-                  onChange={(event) => setDoctorForm((prev) => ({ ...prev, address: event.target.value }))}
-                  placeholder="Address"
+                  name="homeAddress"
+                  value={doctorForm.homeAddress}
+                  onChange={(event) => setDoctorForm((prev) => ({ ...prev, homeAddress: event.target.value }))}
+                  placeholder="Doctor home address"
                   required
                   className="rounded-lg border border-white/15 bg-[#101a30] px-3 py-2 text-sm sm:col-span-2"
+                />
+                <input
+                  name="lng"
+                  value={doctorForm.lng}
+                  onChange={(event) => setDoctorForm((prev) => ({ ...prev, lng: event.target.value }))}
+                  placeholder="Home longitude"
+                  required
+                  className="rounded-lg border border-white/15 bg-[#101a30] px-3 py-2 text-sm"
+                />
+                <input
+                  name="lat"
+                  value={doctorForm.lat}
+                  onChange={(event) => setDoctorForm((prev) => ({ ...prev, lat: event.target.value }))}
+                  placeholder="Home latitude"
+                  required
+                  className="rounded-lg border border-white/15 bg-[#101a30] px-3 py-2 text-sm"
                 />
                 <select
                   name="hospitalId"
@@ -647,6 +687,51 @@ function AdminDashboardPage() {
                         <button onClick={() => editPatient(patient)} className="rounded border border-blue-300/50 px-2 py-1 text-xs text-blue-200">Edit</button>
                         <button onClick={() => deletePatient(patient._id)} className="rounded border border-rose-300/50 px-2 py-1 text-xs text-rose-200">Delete</button>
                       </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'ambulances' && (
+          <div className="space-y-5">
+            <div className="space-y-3 lg:hidden">
+              {filteredAmbulances.map((ambulance) => (
+                <article key={ambulance._id} className="rounded-xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-base font-bold text-slate-100">{ambulance.vehicleNumber}</p>
+                  <p className="text-sm text-slate-400">Driver: {ambulance.driverName} ({ambulance.driverPhone})</p>
+                  <p className="text-sm text-slate-300">Hospital: {ambulance.hospitalId?.name || ambulance.hospitalId || '-'}</p>
+                  <p className="mt-2 text-sm text-slate-300">Status: {ambulance.status}</p>
+                  <p className="text-sm text-slate-300">
+                    Location: {ambulance?.location?.coordinates?.[0] ?? '-'}, {ambulance?.location?.coordinates?.[1] ?? '-'}
+                  </p>
+                </article>
+              ))}
+            </div>
+
+            <div className="-mx-1 hidden overflow-x-auto rounded-xl border border-white/10 bg-white/5 sm:mx-0 lg:block">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-white/10 text-xs uppercase tracking-wider text-slate-300">
+                  <tr>
+                    <th className="px-4 py-3">Vehicle</th>
+                    <th className="px-4 py-3">Driver</th>
+                    <th className="px-4 py-3">Hospital</th>
+                    <th className="px-4 py-3">Location</th>
+                    <th className="px-4 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                  {filteredAmbulances.map((ambulance) => (
+                    <tr key={ambulance._id} className="hover:bg-white/5">
+                      <td className="px-4 py-3 font-bold text-slate-100">{ambulance.vehicleNumber}</td>
+                      <td className="px-4 py-3 text-slate-300">{ambulance.driverName} ({ambulance.driverPhone})</td>
+                      <td className="px-4 py-3 text-slate-300">{ambulance.hospitalId?.name || ambulance.hospitalId || '-'}</td>
+                      <td className="px-4 py-3 text-slate-300">
+                        {ambulance?.location?.coordinates?.[0] ?? '-'}, {ambulance?.location?.coordinates?.[1] ?? '-'}
+                      </td>
+                      <td className="px-4 py-3 text-slate-300">{ambulance.status}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -2,16 +2,22 @@ import { useEffect, useMemo, useState } from 'react';
 import TopNav from '../components/TopNav';
 import { apiFetch } from '../lib/api';
 import { getAuthSession } from '../lib/auth';
+import { getSmsHref, getTelHref, normalizeDialPhone } from '../lib/mobileActions';
 
 const doctorInitial = {
   name: '',
   email: '',
   age: '',
   contactNumber: '',
+  bloodGroup: '',
   password: '',
   specialization: '',
   experience: '',
-  address: '',
+  homeAddress: '',
+  buildingAddress: '',
+  laneAddress: '',
+  lng: '',
+  lat: '',
   licenseNumber: '',
 };
 
@@ -20,8 +26,13 @@ const patientInitial = {
   email: '',
   age: '',
   contactNumber: '',
+  bloodGroup: '',
   password: '',
   address: '',
+  buildingAddress: '',
+  laneAddress: '',
+  lng: '',
+  lat: '',
 };
 
 const formatCurrency = (amount) => {
@@ -37,6 +48,8 @@ function HospitalDashboardPage() {
   const [message, setMessage] = useState('');
   const [doctorForm, setDoctorForm] = useState(doctorInitial);
   const [patientForm, setPatientForm] = useState(patientInitial);
+  const [emergencyAlerts, setEmergencyAlerts] = useState([]);
+  const [notifyingAlertId, setNotifyingAlertId] = useState('');
 
   const loadDashboard = async () => {
     try {
@@ -49,6 +62,19 @@ function HospitalDashboardPage() {
 
   useEffect(() => {
     loadDashboard();
+  }, [session?.token]);
+
+  useEffect(() => {
+    const loadEmergencyAlerts = async () => {
+      try {
+        const result = await apiFetch('/api/emergency/alerts/my?status=PENDING', { token: session?.token });
+        setEmergencyAlerts(Array.isArray(result) ? result : []);
+      } catch {
+        setEmergencyAlerts([]);
+      }
+    };
+
+    loadEmergencyAlerts();
   }, [session?.token]);
 
   const visitedPatients = useMemo(() => {
@@ -129,6 +155,15 @@ function HospitalDashboardPage() {
     const contactNumber = window.prompt('Contact number', doctor.contactNumber || '');
     if (!contactNumber) return;
 
+    const bloodGroup = window.prompt('Blood group', doctor.bloodGroup || '');
+    if (!bloodGroup) return;
+
+    const buildingAddress = window.prompt('Building / House No.', doctor.buildingAddress || '');
+    if (!buildingAddress) return;
+
+    const laneAddress = window.prompt('Lane / Area', doctor.laneAddress || '');
+    if (!laneAddress) return;
+
     try {
       await apiFetch(`/doctors/${doctor._id}`, {
         method: 'PUT',
@@ -138,6 +173,9 @@ function HospitalDashboardPage() {
           specialization,
           contactNumber,
           contact: contactNumber,
+          bloodGroup,
+          buildingAddress,
+          laneAddress,
         },
       });
       setMessage('Doctor updated successfully');
@@ -172,6 +210,15 @@ function HospitalDashboardPage() {
     const address = window.prompt('Address', patient.address || '');
     if (!address) return;
 
+    const bloodGroup = window.prompt('Blood group', patient.bloodGroup || '');
+    if (!bloodGroup) return;
+
+    const buildingAddress = window.prompt('Building / House No.', patient.buildingAddress || '');
+    if (!buildingAddress) return;
+
+    const laneAddress = window.prompt('Lane / Area', patient.laneAddress || '');
+    if (!laneAddress) return;
+
     try {
       await apiFetch(`/patients/${patient._id}`, {
         method: 'PUT',
@@ -180,6 +227,9 @@ function HospitalDashboardPage() {
           name,
           contactNumber,
           address,
+          bloodGroup,
+          buildingAddress,
+          laneAddress,
         },
       });
       setMessage('Patient updated successfully');
@@ -204,6 +254,24 @@ function HospitalDashboardPage() {
     }
   };
 
+  const notifyAmbulanceDriver = async (alertId) => {
+    setError('');
+    setMessage('');
+    setNotifyingAlertId(alertId);
+
+    try {
+      const result = await apiFetch(`/api/emergency/${alertId}/notify-driver`, {
+        method: 'POST',
+        token: session?.token,
+      });
+      setMessage(result?.message || 'Ambulance driver notified.');
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setNotifyingAlertId('');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-ink text-white">
       <TopNav />
@@ -217,6 +285,106 @@ function HospitalDashboardPage() {
             <section className="rounded-3xl border border-white/10 bg-white/5 p-5 sm:p-6">
               <h1 className="text-2xl font-black sm:text-3xl">{data.hospital?.name} Dashboard</h1>
               <p className="mt-2 text-sm text-slate-300">Manage your doctors, patients, and hospital activity.</p>
+              <p className="mt-1 text-xs text-slate-300">
+                Address: {[
+                  data.hospital?.address?.building,
+                  data.hospital?.address?.lane,
+                  data.hospital?.address?.street,
+                  data.hospital?.address?.city,
+                  data.hospital?.address?.state,
+                ]
+                  .filter(Boolean)
+                  .join(', ') || 'Not provided'}
+              </p>
+
+              <div className="mt-5 rounded-2xl border border-rose-300/30 bg-rose-300/10 p-4">
+                <h2 className="text-lg font-black text-rose-100">Emergency Alerts</h2>
+                <p className="mt-1 text-xs text-rose-100/90">Incoming emergencies with patient details for immediate call-back and verification.</p>
+
+                <div className="mt-3 space-y-2">
+                  {emergencyAlerts.slice(0, 5).map((alert) => (
+                    <article key={alert._id} className="rounded-xl border border-white/20 bg-white/10 p-3">
+                      <p className="text-sm font-bold text-white">{alert.patientSnapshot?.name || alert.patientId?.name || 'Patient'}</p>
+                      <p className="text-xs text-slate-200">Blood Group: {alert.patientSnapshot?.bloodGroup || alert.patientId?.bloodGroup || '-'}</p>
+                      <p className="text-xs text-slate-200">Contact: {alert.patientSnapshot?.contactNumber || alert.patientId?.contactNumber || '-'}</p>
+                      <p className="text-xs text-slate-200">Address: {alert.patientSnapshot?.address || alert.patientId?.address || '-'}</p>
+                      <p className="mt-1 text-xs text-slate-200">Ambulance: {alert.ambulanceId?.vehicleNumber || '-'} | Driver: {alert.ambulanceId?.driverName || '-'}</p>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {getTelHref(alert.patientSnapshot?.contactNumber || alert.patientId?.contactNumber) && (
+                          <a
+                            href={getTelHref(alert.patientSnapshot?.contactNumber || alert.patientId?.contactNumber)}
+                            className="rounded-lg border border-emerald-300/50 bg-emerald-300/20 px-2 py-1 text-[11px] font-bold text-emerald-100"
+                          >
+                            Call Patient
+                          </a>
+                        )}
+
+                        {getSmsHref(
+                          alert.patientSnapshot?.contactNumber || alert.patientId?.contactNumber,
+                          `Emergency verification from ${data?.hospital?.name || 'Hospital'}: We received your emergency request. Please share landmark/location now.`
+                        ) && (
+                          <a
+                            href={getSmsHref(
+                              alert.patientSnapshot?.contactNumber || alert.patientId?.contactNumber,
+                              `Emergency verification from ${data?.hospital?.name || 'Hospital'}: We received your emergency request. Please share landmark/location now.`
+                            )}
+                            className="rounded-lg border border-blue-300/50 bg-blue-300/20 px-2 py-1 text-[11px] font-bold text-blue-100"
+                          >
+                            SMS Patient
+                          </a>
+                        )}
+
+                        {getTelHref(alert.ambulanceId?.driverPhone) && (
+                          <a
+                            href={getTelHref(alert.ambulanceId?.driverPhone)}
+                            className="rounded-lg border border-cyan-300/50 bg-cyan-300/20 px-2 py-1 text-[11px] font-bold text-cyan-100"
+                          >
+                            Missed Call Driver
+                          </a>
+                        )}
+
+                        {getSmsHref(
+                          alert.ambulanceId?.driverPhone,
+                          `Emergency dispatch from ${data?.hospital?.name || 'Hospital'} for patient ${alert.patientSnapshot?.name || alert.patientId?.name || ''}. Please move immediately.`
+                        ) && (
+                          <a
+                            href={getSmsHref(
+                              alert.ambulanceId?.driverPhone,
+                              `Emergency dispatch from ${data?.hospital?.name || 'Hospital'} for patient ${alert.patientSnapshot?.name || alert.patientId?.name || ''}. Please move immediately.`
+                            )}
+                            className="rounded-lg border border-indigo-300/50 bg-indigo-300/20 px-2 py-1 text-[11px] font-bold text-indigo-100"
+                          >
+                            SMS Driver
+                          </a>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => notifyAmbulanceDriver(alert._id)}
+                          disabled={notifyingAlertId === alert._id}
+                          className="rounded-lg border border-amber-300/50 bg-amber-300/20 px-2 py-1 text-[11px] font-bold text-amber-100 disabled:opacity-70"
+                        >
+                          {notifyingAlertId === alert._id ? 'Sending SMS...' : 'Send SMS To Driver'}
+                        </button>
+
+                        {Array.isArray(alert?.location?.coordinates) && alert.location.coordinates.length === 2 && (
+                          <a
+                            href={`https://www.google.com/maps?q=${alert.location.coordinates[1]},${alert.location.coordinates[0]}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded-lg border border-fuchsia-300/50 bg-fuchsia-300/20 px-2 py-1 text-[11px] font-bold text-fuchsia-100"
+                          >
+                            Track Incident
+                          </a>
+                        )}
+                      </div>
+                    </article>
+                  ))}
+                  {emergencyAlerts.length === 0 && <p className="text-xs text-slate-200">No pending emergency alerts right now.</p>}
+                </div>
+              </div>
+
               <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                   <p className="text-xs uppercase text-slate-400">Doctors</p>
@@ -489,6 +657,8 @@ function HospitalDashboardPage() {
                             <p className="text-xs text-slate-300">{doctor.specialization}</p>
                             <p className="text-xs text-slate-300">{doctor.email}</p>
                             <p className="text-xs text-slate-300">{doctor.contactNumber}</p>
+                            <p className="text-xs text-slate-300">Blood Group: {doctor.bloodGroup || '-'}</p>
+                            <p className="text-xs text-slate-300">Address: {[doctor.buildingAddress, doctor.laneAddress, doctor.homeAddress || doctor.address].filter(Boolean).join(', ') || '-'}</p>
                           </div>
                           <span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${doctor.isApproved ? 'border-emerald-300/40 bg-emerald-300/10 text-emerald-200' : 'border-amber-300/40 bg-amber-300/10 text-amber-200'}`}>
                             {doctor.isApproved ? 'approved' : doctor.approvalStatus}
@@ -549,6 +719,8 @@ function HospitalDashboardPage() {
                         <p className="font-bold text-slate-100">{patient.name}</p>
                         <p className="text-xs text-slate-300">{patient.email}</p>
                         <p className="text-xs text-slate-300">{patient.contactNumber}</p>
+                        <p className="text-xs text-slate-300">Blood Group: {patient.bloodGroup || '-'}</p>
+                        <p className="text-xs text-slate-300">Address: {[patient.buildingAddress, patient.laneAddress, patient.address].filter(Boolean).join(', ') || '-'}</p>
                         <div className="mt-3 flex gap-2">
                           <button onClick={() => editPatient(patient)} className="rounded-lg border border-blue-300/50 px-2 py-1 text-xs font-bold text-blue-200">
                             Edit

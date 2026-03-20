@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import TopNav from '../components/TopNav';
 import { apiFetch } from '../lib/api';
+import { getAuthSession } from '../lib/auth';
 
 function LandingPage() {
+  const session = getAuthSession();
   const [platformStats, setPlatformStats] = useState({
     approvedHospitals: 0,
     approvedDoctors: 0,
@@ -11,6 +13,7 @@ function LandingPage() {
     recentBooking: null,
   });
   const [visitorCount, setVisitorCount] = useState(0);
+  const [ambulances, setAmbulances] = useState([]);
 
   useEffect(() => {
     const loadStats = async () => {
@@ -28,6 +31,19 @@ function LandingPage() {
     };
 
     loadStats();
+  }, []);
+
+  useEffect(() => {
+    const loadAmbulances = async () => {
+      try {
+        const result = await apiFetch('/api/ambulances/public');
+        setAmbulances(Array.isArray(result) ? result : []);
+      } catch {
+        setAmbulances([]);
+      }
+    };
+
+    loadAmbulances();
   }, []);
 
   // Track visitor on page load
@@ -128,17 +144,26 @@ function LandingPage() {
               <p className="max-w-2xl text-base text-slate-200 sm:text-lg">Manage appointments, patients, and prescriptions effortlessly</p>
               <div className="flex flex-wrap gap-3">
                 <Link
-                  to="/login"
+                  to="/patient/dashboard"
                   className="rounded-full bg-neon px-6 py-3 text-sm font-black uppercase tracking-wider text-ink transition hover:brightness-110"
                 >
-                  Book Demo
+                  Fill Appointment
                 </Link>
-                <Link
-                  to="/register"
-                  className="rounded-full border border-white/30 px-6 py-3 text-sm font-black uppercase tracking-wider text-white transition hover:bg-white/10"
-                >
-                  Start Free Trial
-                </Link>
+                {session?.role === 'hospital' ? (
+                  <Link
+                    to="/ambulance"
+                    className="rounded-full border border-white/30 px-6 py-3 text-sm font-black uppercase tracking-wider text-white transition hover:bg-white/10"
+                  >
+                    Register Ambulance
+                  </Link>
+                ) : (
+                  <Link
+                    to="/hospital/register"
+                    className="rounded-full border border-neon/60 px-6 py-3 text-sm font-black uppercase tracking-wider text-neon transition hover:bg-neon/10"
+                  >
+                    Register Hospital / Clinic
+                  </Link>
+                )}
               </div>
             </div>
 
@@ -175,6 +200,76 @@ function LandingPage() {
                   <p className="mt-1 text-2xl font-black">👁️ {visitorCount}</p>
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-2xl font-black sm:text-3xl">Live Ambulance Details</h2>
+              <p className="mt-2 text-sm text-slate-300">Showing all registered ambulance units with driver, location, and hospital linkage.</p>
+            </div>
+            {session?.role === 'hospital' ? (
+              <Link to="/ambulance" className="rounded-full border border-neon/60 px-5 py-2 text-xs font-black uppercase tracking-wider text-neon transition hover:bg-neon/10">
+                Open Ambulance Module
+              </Link>
+            ) : (
+              <Link to="/login" className="rounded-full border border-white/30 px-5 py-2 text-xs font-black uppercase tracking-wider text-white transition hover:bg-white/10">
+                Hospital Login To Manage Ambulance
+              </Link>
+            )}
+          </div>
+
+          <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/5">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-xs uppercase tracking-[0.18em] text-slate-300">
+                    <th className="px-4 py-3">Vehicle</th>
+                    <th className="px-4 py-3">Driver</th>
+                    <th className="px-4 py-3">Driver Blood</th>
+                    <th className="px-4 py-3">Hospital</th>
+                    <th className="px-4 py-3">Address</th>
+                    <th className="px-4 py-3">Location</th>
+                    <th className="px-4 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ambulances.map((item) => {
+                    const hospitalName = typeof item.hospitalId === 'object' ? item.hospitalId?.name : item.hospitalId;
+                    const coordinates = item?.location?.coordinates || [];
+
+                    return (
+                      <tr key={item._id} className="border-b border-white/5">
+                        <td className="px-4 py-3 font-bold text-slate-100">{item.vehicleNumber}</td>
+                        <td className="px-4 py-3 text-slate-200">
+                          <p>{item.driverName}</p>
+                          <p className="text-xs text-slate-400">{item.driverPhone}</p>
+                        </td>
+                        <td className="px-4 py-3 text-slate-300">{item.driverBloodGroup || '-'}</td>
+                        <td className="px-4 py-3 text-slate-300">{hospitalName || 'Not mapped'}</td>
+                        <td className="px-4 py-3 text-slate-300">{item.address || '-'}</td>
+                        <td className="px-4 py-3 text-slate-300">
+                          {coordinates[0] ?? '-'}, {coordinates[1] ?? '-'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="rounded-full border border-cyan-300/40 bg-cyan-300/10 px-3 py-1 text-xs font-bold text-cyan-200">
+                            {item.status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {ambulances.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-6 text-center text-sm text-slate-300">
+                        No ambulances available yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </section>

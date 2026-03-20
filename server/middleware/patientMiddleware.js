@@ -1,8 +1,12 @@
 const validatePatientPayload = (req, res, next) => {
-	const { name, email, age, contactNumber, password, address } = req.body;
+	const { name, email, age, contactNumber, password, bloodGroup, buildingAddress, laneAddress, lng, lat } = req.body;
 
-	if (!name || !email || !age || !contactNumber || !password || !address) {
+	if (!name || !email || !age || !contactNumber || !password || !bloodGroup || !buildingAddress || !laneAddress) {
 		return res.status(400).json({ error: "Missing required patient fields" });
+	}
+
+	if (!Number.isFinite(Number(lng)) || !Number.isFinite(Number(lat))) {
+		return res.status(400).json({ error: "Patient location must include valid lng and lat" });
 	}
 
 	return next();
