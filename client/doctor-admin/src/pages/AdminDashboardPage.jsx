@@ -401,7 +401,7 @@ function AdminDashboardPage() {
   return (
     <AdminShell>
       <div className="space-y-5 sm:space-y-6">
-        <div className="rounded-2xl border border-blue-500/20 bg-gradient-to-r from-blue-900/30 to-purple-900/30 p-4 sm:p-6 lg:p-8">
+        <div className="glass-panel border-blue-500/20 bg-gradient-to-r from-blue-900/30 to-purple-900/30 p-4 sm:p-6 lg:p-8">
           <h1 className="text-xl font-black text-white sm:text-3xl lg:text-4xl">Multi-Hospital Admin Dashboard</h1>
           <p className="mt-2 text-sm text-slate-300 sm:text-base">Perform CRUD on hospitals, doctors, and patients with hospital-wise tracking.</p>
         </div>
@@ -425,7 +425,7 @@ function AdminDashboardPage() {
           ))}
         </div>
 
-        <div className="rounded-xl border border-white/10 bg-white/5 p-3 sm:p-4">
+        <div className="ui-panel p-3 sm:p-4">
           <input
             type="text"
             value={searchQuery}
@@ -472,7 +472,7 @@ function AdminDashboardPage() {
 
         {activeTab === 'hospitals' && (
           <div className="space-y-5 lg:space-y-6">
-            <form onSubmit={createHospital} className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+            <form onSubmit={createHospital} className="ui-panel p-4 sm:p-5">
               <h3 className="text-lg font-black">Create Hospital</h3>
               <div className="mt-4 grid gap-3">
                 {Object.entries(hospitalForm).map(([key, value]) => (
@@ -493,7 +493,7 @@ function AdminDashboardPage() {
 
             <div className="space-y-3 lg:hidden">
               {filteredHospitals.map((hospital) => (
-                <article key={hospital._id} className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <article key={hospital._id} className="ui-panel p-4">
                   <p className="text-base font-bold text-slate-100">{hospital.name}</p>
                   <p className="text-sm text-slate-400">{hospital.email}</p>
                   <p className="mt-2 text-sm text-slate-300">Status: {hospital.status}</p>
@@ -514,7 +514,7 @@ function AdminDashboardPage() {
               ))}
             </div>
 
-            <div className="-mx-1 hidden overflow-x-auto rounded-xl border border-white/10 bg-white/5 sm:mx-0 lg:block">
+            <div className="-mx-1 hidden overflow-x-auto ui-panel sm:mx-0 lg:block">
               <table className="min-w-full text-left text-sm">
                 <thead className="bg-white/10 text-xs uppercase tracking-wider text-slate-300">
                   <tr>
@@ -555,7 +555,7 @@ function AdminDashboardPage() {
 
         {activeTab === 'doctors' && (
           <div className="space-y-6">
-            <form onSubmit={createDoctor} className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+            <form onSubmit={createDoctor} className="ui-panel p-4 sm:p-5">
               <h3 className="text-lg font-black">Create Doctor</h3>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <input
@@ -672,7 +672,7 @@ function AdminDashboardPage() {
 
             <div className="space-y-3 lg:hidden">
               {filteredDoctors.map((doctor) => (
-                <article key={doctor._id} className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <article key={doctor._id} className="ui-panel p-4">
                   <p className="text-base font-bold text-slate-100">{doctor.name}</p>
                   <p className="text-sm text-slate-400">{doctor.specialization}</p>
                   <p className="mt-2 text-sm text-slate-300">Hospital: {doctor.hospitalId?.name || '-'}</p>
@@ -686,7 +686,7 @@ function AdminDashboardPage() {
               ))}
             </div>
 
-            <div className="-mx-1 hidden overflow-x-auto rounded-xl border border-white/10 bg-white/5 sm:mx-0 lg:block">
+            <div className="-mx-1 hidden overflow-x-auto ui-panel sm:mx-0 lg:block">
               <table className="min-w-full text-left text-sm">
                 <thead className="bg-white/10 text-xs uppercase tracking-wider text-slate-300">
                   <tr>
@@ -721,7 +721,7 @@ function AdminDashboardPage() {
           <div className="space-y-5">
             <div className="space-y-3 lg:hidden">
               {filteredPatients.map((patient) => (
-                <article key={patient._id} className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <article key={patient._id} className="ui-panel p-4">
                   <p className="text-base font-bold text-slate-100">{patient.name}</p>
                   <p className="text-sm text-slate-400">{patient.email}</p>
                   <p className="mt-2 text-sm text-slate-300">Contact: {patient.contactNumber}</p>
@@ -734,7 +734,7 @@ function AdminDashboardPage() {
               ))}
             </div>
 
-            <div className="-mx-1 hidden overflow-x-auto rounded-xl border border-white/10 bg-white/5 sm:mx-0 lg:block">
+            <div className="-mx-1 hidden overflow-x-auto ui-panel sm:mx-0 lg:block">
               <table className="min-w-full text-left text-sm">
                 <thead className="bg-white/10 text-xs uppercase tracking-wider text-slate-300">
                   <tr>
@@ -770,7 +770,7 @@ function AdminDashboardPage() {
             </div>
             <div className="space-y-3 lg:hidden">
               {filteredAmbulances.map((ambulance) => (
-                <article key={ambulance._id} className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <article key={ambulance._id} className="ui-panel p-4">
                   <p className="text-base font-bold text-slate-100">{ambulance.vehicleNumber}</p>
                   <p className="text-sm text-slate-400">Driver: {ambulance.driverName} ({ambulance.driverPhone})</p>
                   <p className="text-sm text-slate-300">Driver Email: {ambulance.driverEmail || '-'}</p>
@@ -786,7 +786,7 @@ function AdminDashboardPage() {
               ))}
             </div>
 
-            <div className="-mx-1 hidden overflow-x-auto rounded-xl border border-white/10 bg-white/5 sm:mx-0 lg:block">
+            <div className="-mx-1 hidden overflow-x-auto ui-panel sm:mx-0 lg:block">
               <table className="min-w-full text-left text-sm">
                 <thead className="bg-white/10 text-xs uppercase tracking-wider text-slate-300">
                   <tr>
@@ -844,7 +844,7 @@ function AdminDashboardPage() {
               {filteredDonors.length === 0 && <p className="text-sm text-slate-300">No donors found.</p>}
             </div>
 
-            <div className="-mx-1 hidden overflow-x-auto rounded-xl border border-white/10 bg-white/5 sm:mx-0 lg:block">
+            <div className="-mx-1 hidden overflow-x-auto ui-panel sm:mx-0 lg:block">
               <table className="min-w-full text-left text-sm">
                 <thead className="bg-white/10 text-xs uppercase tracking-wider text-slate-300">
                   <tr>
@@ -896,7 +896,7 @@ function AdminDashboardPage() {
               ))}
             </div>
 
-            <div className="-mx-1 hidden overflow-x-auto rounded-xl border border-white/10 bg-white/5 sm:mx-0 lg:block">
+            <div className="-mx-1 hidden overflow-x-auto ui-panel sm:mx-0 lg:block">
               <table className="min-w-full text-left text-sm">
                 <thead className="bg-white/10 text-xs uppercase tracking-wider text-slate-300">
                   <tr>
@@ -947,7 +947,7 @@ function AdminDashboardPage() {
               ))}
             </div>
 
-            <div className="-mx-1 hidden overflow-x-auto rounded-xl border border-white/10 bg-white/5 sm:mx-0 lg:block">
+            <div className="-mx-1 hidden overflow-x-auto ui-panel sm:mx-0 lg:block">
             <table className="min-w-full text-left text-sm">
               <thead className="bg-white/10 text-xs uppercase tracking-wider text-slate-300">
                 <tr>

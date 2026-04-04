@@ -21,9 +21,10 @@ function AdminShell({ children }) {
   };
 
   return (
-    <div className="min-h-screen bg-slatex text-slate-100">
-      <div className="mx-auto flex min-h-screen max-w-[1600px]">
-        <aside className="hidden w-72 shrink-0 border-r border-white/10 bg-[#0c162d]/95 p-6 lg:block">
+    <div className="min-h-screen bg-slatex text-slate-100 relative">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(63,140,255,0.08),transparent_30%),radial-gradient(circle_at_85%_20%,rgba(35,213,171,0.06),transparent_35%)]" />
+      <div className="relative mx-auto flex min-h-screen max-w-[1600px]">
+        <aside className="glass-nav hidden w-72 shrink-0 border-r border-white/10 p-6 lg:block">
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-mint">Doctor System</p>
           <h1 className="mt-2 text-2xl font-black">Admin Command</h1>
           <p className="mt-1 text-xs text-slate-400">Central governance for hospitals, fleets, donors, and emergency workflows.</p>
@@ -45,7 +46,7 @@ function AdminShell({ children }) {
         {mobileMenuOpen && (
           <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setMobileMenuOpen(false)}>
             <aside
-              className="h-full w-64 border-r border-white/10 bg-[#0c162d]/95 p-5"
+              className="glass-nav h-full w-64 border-r border-white/10 p-5 shadow-glow"
               onClick={(event) => event.stopPropagation()}
             >
               <p className="text-xs font-bold uppercase tracking-[0.25em] text-mint">Doctor System</p>
@@ -70,7 +71,7 @@ function AdminShell({ children }) {
         )}
 
         <div className="flex-1">
-          <header className="sticky top-0 z-30 border-b border-white/10 bg-[#091126]/85 px-4 py-3 backdrop-blur-xl sm:px-6 sm:py-4">
+          <header className="glass-nav sticky top-0 z-30 px-4 py-3 transition-all duration-300 sm:px-6 sm:py-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Enterprise Panel</p>
