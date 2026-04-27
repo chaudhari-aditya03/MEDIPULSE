@@ -9,6 +9,7 @@ import DoctorProfilePage from './pages/DoctorProfilePage';
 import PatientDashboardPage from './pages/PatientDashboardPage';
 import PatientProfilePage from './pages/PatientProfilePage';
 import HospitalDashboardPage from './pages/HospitalDashboardPage';
+import HospitalProfilePage from './pages/HospitalProfilePage';
 import AmbulanceModulePage from './pages/AmbulanceModulePage';
 import AmbulanceDriverDashboardPage from './pages/AmbulanceDriverDashboardPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -77,6 +78,14 @@ function App() {
         element={
           <ProtectedRoute allowedRoles={['hospital']}>
             <HospitalDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/hospital/profile"
+        element={
+          <ProtectedRoute allowedRoles={['hospital']}>
+            <HospitalProfilePage />
           </ProtectedRoute>
         }
       />

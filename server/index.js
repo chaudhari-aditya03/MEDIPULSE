@@ -49,6 +49,7 @@ const io = new Server(httpServer, {
 });
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
+app.use('/uploads', express.static(path.join(currentDirPath, 'uploads')));
 
 const PORT = process.env.PORT || 3000;
 

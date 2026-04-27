@@ -6,6 +6,7 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL)
 
 const apiFetch = async (path, options = {}) => {
   const { method = 'GET', body, token, headers = {} } = options;
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
 
   let response;
 
@@ -13,11 +14,11 @@ const apiFetch = async (path, options = {}) => {
     response = await fetch(`${API_BASE_URL}${path}`, {
       method,
       headers: {
-        'Content-Type': 'application/json',
+        ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...headers,
       },
-      body: body ? JSON.stringify(body) : undefined,
+      body: body ? (isFormData ? body : JSON.stringify(body)) : undefined,
     });
   } catch {
     throw new Error('Unable to reach backend server');

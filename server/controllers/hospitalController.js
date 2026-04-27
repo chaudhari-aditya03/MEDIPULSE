@@ -9,34 +9,16 @@ import {
   getHospitalStatisticsService,
   getHospitalDashboardService,
   getPublicPlatformStatsService,
+  getHospitalProfileByUserIdService,
+  updateHospitalProfileByUserIdService,
 } from '../services/hospitalService.js';
 
 export const registerHospitalController = async (req, res) => {
   try {
-    const { name, email, password, phone, address, website, licenseNumber, licenseExpiry, description, beds, departments, lng, lat } = req.body;
-
-    if (!name || !email || !password || !phone || !licenseNumber) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    if (!Number.isFinite(Number(lng)) || !Number.isFinite(Number(lat))) {
-      return res.status(400).json({ error: 'Hospital location must include valid lng and lat' });
-    }
+    const payload = req.hospitalPayload || req.body;
 
     const hospital = await createHospitalService({
-      name,
-      email,
-      password,
-      phone,
-      address,
-      website,
-      licenseNumber,
-      licenseExpiry,
-      description,
-      beds,
-      departments,
-      lng,
-      lat,
+      ...payload,
       status: 'pending',
       role: 'hospital',
     });
@@ -156,5 +138,30 @@ export const getMyHospitalDashboardController = async (req, res) => {
       return res.status(404).json({ error: error.message });
     }
     res.status(400).json({ error: error.message });
+  }
+};
+
+export const getMyHospitalProfileController = async (req, res) => {
+  try {
+    const hospital = await getHospitalProfileByUserIdService(req.userId);
+    if (!hospital) {
+      return res.status(404).json({ error: 'Hospital not found' });
+    }
+    return res.status(200).json(hospital);
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+};
+
+export const updateMyHospitalProfileController = async (req, res) => {
+  try {
+    const payload = req.hospitalProfilePayload || req.body;
+    const hospital = await updateHospitalProfileByUserIdService(req.userId, payload);
+    if (!hospital) {
+      return res.status(404).json({ error: 'Hospital not found' });
+    }
+    return res.status(200).json({ message: 'Hospital profile updated successfully', hospital });
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
   }
 };

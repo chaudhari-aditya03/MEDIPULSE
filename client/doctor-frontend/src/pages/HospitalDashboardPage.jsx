@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import TopNav from '../components/TopNav';
 import { apiFetch } from '../lib/api';
 import { getAuthSession } from '../lib/auth';
@@ -590,7 +591,7 @@ function HospitalDashboardPage() {
             </section>
 
             <section className="flex gap-2 overflow-x-auto border-b border-white/10 pb-2 sm:gap-3">
-              {['overview', 'revenue', 'doctors', 'patients'].map((tab) => (
+              {['overview', 'revenue', 'doctors', 'patients', 'profile'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -646,6 +647,39 @@ function HospitalDashboardPage() {
                       )}
                     </tbody>
                   </table>
+                </div>
+              </section>
+            )}
+
+            {activeTab === 'profile' && (
+              <section className="rounded-3xl border border-white/10 bg-white/5 p-5 sm:p-6">
+                <h2 className="text-xl font-black sm:text-2xl">Hospital Profile Management</h2>
+                <p className="mt-2 text-sm text-slate-300">
+                  View complete registration details and allow hospital committee updates from the dedicated profile page.
+                </p>
+
+                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-xs uppercase text-slate-400">Current Status</p>
+                    <p className="mt-2 text-lg font-black text-white">{data.hospital?.status || '-'}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-xs uppercase text-slate-400">License Number</p>
+                    <p className="mt-2 text-lg font-black text-white">{data.hospital?.licenseNumber || '-'}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-xs uppercase text-slate-400">Departments</p>
+                    <p className="mt-2 text-sm font-semibold text-white">{Array.isArray(data.hospital?.departments) ? data.hospital.departments.join(', ') : '-'}</p>
+                  </div>
+                </div>
+
+                <div className="mt-5">
+                  <Link
+                    to="/hospital/profile"
+                    className="inline-flex min-h-[44px] items-center rounded-2xl bg-gradient-to-r from-teal-500 to-cyan-500 px-4 py-2 text-sm font-black uppercase tracking-wide text-slate-950 shadow-xl"
+                  >
+                    Open Hospital Profile Page
+                  </Link>
                 </div>
               </section>
             )}

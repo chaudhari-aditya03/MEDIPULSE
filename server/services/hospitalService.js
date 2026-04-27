@@ -5,6 +5,23 @@ import Patient from '../models/patientModel.js';
 import Payment from '../models/paymentModel.js';
 import bcrypt from 'bcrypt';
 
+const normalizeString = (value) => String(value ?? '').trim();
+
+const normalizeDepartments = (rawDepartments) => {
+  if (!Array.isArray(rawDepartments)) return [];
+  return Array.from(new Set(rawDepartments.map((item) => normalizeString(item)).filter(Boolean)));
+};
+
+const normalizeAddress = (rawAddress = {}) => ({
+  building: normalizeString(rawAddress?.building),
+  lane: normalizeString(rawAddress?.lane),
+  street: normalizeString(rawAddress?.street),
+  city: normalizeString(rawAddress?.city),
+  state: normalizeString(rawAddress?.state),
+  zipCode: normalizeString(rawAddress?.zipCode),
+  country: normalizeString(rawAddress?.country),
+});
+
 const toPoint = (lng, lat, label = 'Hospital') => {
   const parsedLng = Number(lng);
   const parsedLat = Number(lat);
@@ -21,14 +38,37 @@ const toPoint = (lng, lat, label = 'Hospital') => {
 
 export const createHospitalService = async (hospitalData) => {
   const payload = { ...hospitalData };
-  payload.email = String(payload.email).trim().toLowerCase();
+
+  payload.email = normalizeString(payload.email).toLowerCase();
+  payload.name = normalizeString(payload.name);
+  payload.phone = normalizeString(payload.phone);
+  payload.website = normalizeString(payload.website);
+  payload.description = normalizeString(payload.description);
+  payload.licenseNumber = normalizeString(payload.licenseNumber).toUpperCase();
+  payload.beds = Number(payload.beds || 0);
+  payload.address = normalizeAddress(payload.address || {});
+  payload.departments = normalizeDepartments(payload.departments);
+
+  const duplicateEmail = await Hospital.findOne({ email: payload.email }).lean();
+  if (duplicateEmail) {
+    throw new Error('Email already in use');
+  }
+
+  const duplicateLicense = await Hospital.findOne({ licenseNumber: payload.licenseNumber }).lean();
+  if (duplicateLicense) {
+    throw new Error('License number already exists');
+  }
+
   payload.password = await bcrypt.hash(payload.password, 10);
   payload.location = toPoint(payload.lng, payload.lat, 'Hospital');
   delete payload.lng;
   delete payload.lat;
+
   const hospital = new Hospital(payload);
   await hospital.save();
-  return hospital;
+  const hospitalObject = hospital.toObject();
+  delete hospitalObject.password;
+  return hospitalObject;
 };
 
 export const getAllHospitalsService = async (filters = {}) => {
@@ -36,11 +76,53 @@ export const getAllHospitalsService = async (filters = {}) => {
   if (filters.status) query.status = filters.status;
   if (filters.isVerified !== undefined) query.isVerified = filters.isVerified;
 
-  return await Hospital.find(query).sort({ createdAt: -1 });
+  return await Hospital.find(query).select('-password').sort({ createdAt: -1 });
 };
 
 export const getHospitalByIdService = async (id) => {
-  return await Hospital.findById(id);
+  return await Hospital.findById(id).select('-password');
+};
+
+export const getHospitalProfileByUserIdService = async (hospitalId) => {
+  return await Hospital.findById(hospitalId).select('-password');
+};
+
+export const updateHospitalProfileByUserIdService = async (hospitalId, updateData) => {
+  const payload = { ...updateData };
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'email')) {
+    payload.email = normalizeString(payload.email).toLowerCase();
+    const duplicateEmail = await Hospital.findOne({ email: payload.email, _id: { $ne: hospitalId } }).lean();
+    if (duplicateEmail) {
+      throw new Error('Email already in use');
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'name')) payload.name = normalizeString(payload.name);
+  if (Object.prototype.hasOwnProperty.call(payload, 'phone')) payload.phone = normalizeString(payload.phone);
+  if (Object.prototype.hasOwnProperty.call(payload, 'website')) payload.website = normalizeString(payload.website);
+  if (Object.prototype.hasOwnProperty.call(payload, 'description')) payload.description = normalizeString(payload.description);
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'licenseNumber')) {
+    payload.licenseNumber = normalizeString(payload.licenseNumber).toUpperCase();
+    const duplicateLicense = await Hospital.findOne({ licenseNumber: payload.licenseNumber, _id: { $ne: hospitalId } }).lean();
+    if (duplicateLicense) {
+      throw new Error('License number already exists');
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'beds')) payload.beds = Number(payload.beds || 0);
+  if (Object.prototype.hasOwnProperty.call(payload, 'address')) payload.address = normalizeAddress(payload.address || {});
+  if (Object.prototype.hasOwnProperty.call(payload, 'departments')) payload.departments = normalizeDepartments(payload.departments);
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'lng') || Object.prototype.hasOwnProperty.call(payload, 'lat')) {
+    payload.location = toPoint(payload.lng, payload.lat, 'Hospital');
+    delete payload.lng;
+    delete payload.lat;
+  }
+
+  await Hospital.findByIdAndUpdate(hospitalId, payload, { new: true, runValidators: true });
+  return await Hospital.findById(hospitalId).select('-password');
 };
 
 export const updateHospitalService = async (id, updateData) => {
@@ -52,7 +134,8 @@ export const updateHospitalService = async (id, updateData) => {
     delete payload.lat;
   }
 
-  return await Hospital.findByIdAndUpdate(id, payload, { new: true });
+  await Hospital.findByIdAndUpdate(id, payload, { new: true, runValidators: true });
+  return await Hospital.findById(id).select('-password');
 };
 
 export const deleteHospitalService = async (id) => {
@@ -60,7 +143,7 @@ export const deleteHospitalService = async (id) => {
 };
 
 export const approveHospitalService = async (id) => {
-  return await Hospital.findByIdAndUpdate(
+  await Hospital.findByIdAndUpdate(
     id,
     {
       status: 'approved',
@@ -68,16 +151,18 @@ export const approveHospitalService = async (id) => {
     },
     { new: true }
   );
+  return await Hospital.findById(id).select('-password');
 };
 
 export const rejectHospitalService = async (id, reason) => {
-  return await Hospital.findByIdAndUpdate(
+  await Hospital.findByIdAndUpdate(
     id,
     {
       status: 'rejected',
     },
     { new: true }
   );
+  return await Hospital.findById(id).select('-password');
 };
 
 export const getHospitalStatisticsService = async () => {

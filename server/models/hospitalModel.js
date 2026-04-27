@@ -20,6 +20,41 @@ const pointSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const licenseProofSchema = new mongoose.Schema(
+  {
+    fileName: {
+      type: String,
+      default: '',
+    },
+    originalName: {
+      type: String,
+      default: '',
+    },
+    mimeType: {
+      type: String,
+      default: '',
+    },
+    size: {
+      type: Number,
+      default: 0,
+    },
+    storagePath: {
+      type: String,
+      default: '',
+    },
+    uploadedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    source: {
+      type: String,
+      enum: ['upload', 'metadata'],
+      default: 'metadata',
+    },
+  },
+  { _id: false }
+);
+
 const hospitalSchema = new mongoose.Schema(
   {
     name: {
@@ -96,6 +131,10 @@ const hospitalSchema = new mongoose.Schema(
     departments: {
       type: [String],
       default: [],
+    },
+    licenseProof: {
+      type: licenseProofSchema,
+      default: () => ({}),
     },
   },
   { timestamps: true }

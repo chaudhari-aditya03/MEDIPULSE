@@ -10,16 +10,23 @@ import {
   getHospitalStatisticsController,
   getMyHospitalDashboardController,
   getPublicPlatformStatsController,
+  getMyHospitalProfileController,
+  updateMyHospitalProfileController,
 } from '../controllers/hospitalController.js';
 import { verifyToken, requireAdmin, requireRoles } from '../middleware/authMiddleware.js';
+import { uploadHospitalLicenseProof, validateHospitalRegistrationPayload, validateHospitalProfileUpdatePayload } from '../middleware/hospitalMiddleware.js';
 
 const router = express.Router();
 
 // Public: Hospital registration
-router.post('/register', registerHospitalController);
+router.post('/register', uploadHospitalLicenseProof, validateHospitalRegistrationPayload, registerHospitalController);
 
 // Hospital: Own dashboard
 router.get('/me/dashboard', requireRoles('hospital'), getMyHospitalDashboardController);
+
+// Hospital: Own profile
+router.get('/me/profile', requireRoles('hospital'), getMyHospitalProfileController);
+router.put('/me/profile', requireRoles('hospital'), uploadHospitalLicenseProof, validateHospitalProfileUpdatePayload, updateMyHospitalProfileController);
 
 // Admin: List all hospitals (with filters)
 router.get('/admin/all', verifyToken, requireAdmin, listAllHospitalsController);

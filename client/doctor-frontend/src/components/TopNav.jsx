@@ -83,9 +83,14 @@ function TopNav() {
             </>
           )}
           {session?.role === 'hospital' && (
-            <NavLink to="/hospital/dashboard" className={({ isActive }) => `rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 ${isActive ? 'bg-white/10 text-white shadow-inner' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
-              Hospital Dashboard
-            </NavLink>
+            <>
+              <NavLink to="/hospital/dashboard" className={({ isActive }) => `rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 ${isActive ? 'bg-white/10 text-white shadow-inner' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
+                Hospital Dashboard
+              </NavLink>
+              <NavLink to="/hospital/profile" className={({ isActive }) => `rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 ${isActive ? 'bg-white/10 text-white shadow-inner' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
+                Hospital Profile
+              </NavLink>
+            </>
           )}
           {session?.role === 'driver' && (
             <NavLink to="/ambulance/driver/dashboard" className={({ isActive }) => `rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 ${isActive ? 'bg-white/10 text-white shadow-inner' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
@@ -140,9 +145,14 @@ function TopNav() {
               </NavLink>
             )}
             {session?.role === 'hospital' && (
-              <NavLink to="/hospital/dashboard" onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
-                Hospital Dashboard
-              </NavLink>
+              <>
+                <NavLink to="/hospital/dashboard" onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
+                  Hospital Dashboard
+                </NavLink>
+                <NavLink to="/hospital/profile" onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
+                  Hospital Profile
+                </NavLink>
+              </>
             )}
             {session?.role === 'driver' && (
               <NavLink to="/ambulance/driver/dashboard" onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
